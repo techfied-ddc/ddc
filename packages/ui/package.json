@@ -1,0 +1,44 @@
+{
+  "name": "@ddc/ui",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles": "./src/styles/globals.css",
+    "./tailwind-preset": "./tailwind.preset.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "peerDependencies": {
+    "framer-motion": "^11",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "dependencies": {
+    "@ddc/shared": "workspace:*",
+    "@fontsource/fraunces": "^5.2.5",
+    "@fontsource/inter": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-slot": "^1.1.0",
+    "@radix-ui/react-toast": "^1.2.2",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@ddc/config": "workspace:*",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "framer-motion": "^11",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2"
+  }
+}

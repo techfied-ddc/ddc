@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/shared" },
+    { "path": "packages/ui" },
+    { "path": "apps/api" },
+    { "path": "apps/web-website" },
+    { "path": "apps/web-user" },
+    { "path": "apps/web-store" },
+    { "path": "apps/web-admin" }
+  ]
+}

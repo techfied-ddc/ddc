@@ -1,0 +1,10 @@
+{
+  "extends": "@ddc/config/tsconfig/react",
+  "compilerOptions": {
+    "paths": {
+      "@ddc/shared": ["../shared/src/index.ts"]
+    }
+  },
+  "include": ["src", "tailwind.preset.ts"],
+  "exclude": ["node_modules", "dist"]
+}

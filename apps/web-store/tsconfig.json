@@ -1,0 +1,14 @@
+{
+  "extends": "@ddc/config/tsconfig/react",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@ddc/shared": ["../../packages/shared/src/index.ts"],
+      "@ddc/ui":     ["../../packages/ui/src/index.ts"],
+      "@/*":         ["./src/*"]
+    }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

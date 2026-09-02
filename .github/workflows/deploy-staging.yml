@@ -1,0 +1,24 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-api:
+    name: Deploy API to Render (staging)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}"
+
+  # Vercel auto-deploys from main via Git integration.
+  # These steps exist as documentation checkpoints.
+  deploy-frontends:
+    name: Vercel preview (auto via Git)
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Vercel picks up the push automatically via GitHub integration."

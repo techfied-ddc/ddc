@@ -1,0 +1,23 @@
+{
+  "name": "@ddc/shared",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test":      "vitest run",
+    "lint":      "eslint src --ext .ts"
+  },
+  "devDependencies": {
+    "@ddc/config": "workspace:*",
+    "typescript":  "^5.7.3",
+    "vitest":      "^3.0.5"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  }
+}
