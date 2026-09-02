@@ -3,7 +3,7 @@ import React, { lazy, Suspense } from 'react';
 
 // Lazy-loaded route components (to be built in Phase 1+)
 const AuthLayout       = lazy(() => import('./features/auth/AuthLayout.js'));
-const PhoneLoginPage   = lazy(() => import('./features/auth/PhoneLoginPage.js'));
+const LoginPage        = lazy(() => import('./features/auth/LoginPage.js'));
 const OtpVerifyPage    = lazy(() => import('./features/auth/OtpVerifyPage.js'));
 const AppLayout        = lazy(() => import('./features/layout/AppLayout.js'));
 const HomePage         = lazy(() => import('./features/home/HomePage.js'));
@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
   {
     element: withSuspense(<AuthLayout />),
     children: [
-      { path: '/login',      element: withSuspense(<PhoneLoginPage />) },
+      { path: '/login',      element: withSuspense(<LoginPage />) },
       { path: '/login/otp',  element: withSuspense(<OtpVerifyPage />) },
     ],
   },

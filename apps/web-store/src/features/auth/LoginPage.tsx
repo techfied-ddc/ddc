@@ -6,10 +6,9 @@ import { Role } from '@ddc/shared';
 import { api, ApiError } from '../../lib/api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 
-const COUNTRY_CODE = '+91';
 const OTP_RESEND_SECONDS = 30;
 
-type Step = 'phone' | 'otp';
+type Step = 'email' | 'otp';
 interface VerifyResponse { data: { accessToken: string; user: { _id: string; role: Role; storeId?: string } } }
 
 export default function LoginPage() {
@@ -17,16 +16,15 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const canvasRef = useLiquidGlass({ intensity: 0.05 });
 
-  const [step, setStep]       = useState<Step>('phone');
-  const [digits, setDigits]   = useState('');
+  const [step, setStep]       = useState<Step>('email');
+  const [email, setEmail]     = useState('');
   const [otp, setOtp]         = useState('');
   const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>(null!);
 
-  const phone = `${COUNTRY_CODE}${digits}`;
-  const isValidPhone = /^\d{10}$/.test(digits);
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   const startCountdown = () => {
     clearInterval(timerRef.current);
@@ -39,11 +37,11 @@ export default function LoginPage() {
   useEffect(() => () => clearInterval(timerRef.current), []);
 
   const handleSendOtp = async () => {
-    if (!isValidPhone || loading) return;
+    if (!isValidEmail || loading) return;
     setError('');
     setLoading(true);
     try {
-      await api.post('/api/v1/auth/otp/send', { phone: digits });
+      await api.post('/api/v1/auth/otp/send', { email: email.trim() });
       setStep('otp');
       startCountdown();
     } catch (err) {
@@ -58,7 +56,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/api/v1/auth/otp/verify', { phone, otp: value }) as VerifyResponse;
+      const res = await api.post('/api/v1/auth/otp/verify', { email: email.trim(), otp: value }) as VerifyResponse;
       const { accessToken, user: u } = res.data;
 
       // Guard: only store/rider roles can access this app
@@ -96,46 +94,43 @@ export default function LoginPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
           <GlassCard className="p-6 space-y-6">
             <AnimatePresence mode="wait">
-              {step === 'phone' ? (
-                <motion.div key="phone" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              {step === 'email' ? (
+                <motion.div key="email" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <div>
                     <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">For store owners, staff, and riders.</p>
                   </div>
                   <div>
                     <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">
-                      Mobile number
+                      Email address
                     </label>
-                    <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
-                      <span className="text-[var(--text-muted)] font-mono text-sm select-none">{COUNTRY_CODE}</span>
-                      <div className="w-px h-5 bg-[var(--border)]" />
+                    <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
                       <input
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={10}
-                        value={digits}
-                        onChange={(e) => { setDigits(e.target.value.replace(/\D/g, '')); setError(''); }}
+                        type="email"
+                        value={email}
+                        onChange={(e) => { setEmail(e.target.value); setError(''); }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
-                        placeholder="98765 43210"
-                        className="flex-1 bg-transparent text-[var(--text-primary)] font-mono text-lg placeholder:text-[var(--text-subtle)] outline-none"
+                        placeholder="you@example.com"
+                        className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
                         autoFocus
+                        autoComplete="email"
                       />
                     </div>
                   </div>
                   {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
-                  <Button className="w-full" size="lg" loading={loading} disabled={!isValidPhone} onClick={handleSendOtp}>
+                  <Button className="w-full" size="lg" loading={loading} disabled={!isValidEmail} onClick={handleSendOtp}>
                     Send OTP
                   </Button>
                 </motion.div>
               ) : (
                 <motion.div key="otp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <div>
-                    <button onClick={() => { setStep('phone'); setOtp(''); setError(''); }} className="text-xs text-[var(--gold)] mb-3 block hover:opacity-80">
-                      ← Change number
+                    <button onClick={() => { setStep('email'); setOtp(''); setError(''); }} className="text-xs text-[var(--gold)] mb-3 block hover:opacity-80">
+                      ← Change email
                     </button>
                     <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Enter the code</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">
-                      Sent to <span className="font-mono text-[var(--text-primary)]">{COUNTRY_CODE}{digits}</span>
+                      Sent to <span className="font-mono text-[var(--text-primary)]">{email}</span>
                     </p>
                   </div>
                   <OtpInput length={6} value={otp} onChange={(v) => { setOtp(v); setError(''); }} onComplete={handleVerify} disabled={loading} />
@@ -147,7 +142,7 @@ export default function LoginPage() {
                     {countdown > 0 ? (
                       <span className="font-mono text-[var(--text-subtle)]">Resend in {countdown}s</span>
                     ) : (
-                      <button onClick={async () => { await api.post('/api/v1/auth/otp/send', { phone: digits }); startCountdown(); }} className="text-[var(--gold)] hover:opacity-80">
+                      <button onClick={async () => { await api.post('/api/v1/auth/otp/send', { email: email.trim() }); startCountdown(); }} className="text-[var(--gold)] hover:opacity-80">
                         Resend OTP
                       </button>
                     )}

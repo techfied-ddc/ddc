@@ -1,8 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Order } from './order.model.js';
 import { placeOrder, transitionOrder, verifyHandoverOtp } from './orders.service.js';
+import { markInvoicePaid } from '../invoicing/invoicing.service.js';
 import { AppError } from '../../lib/errors.js';
-import { DEFAULT_PAGE_SIZE, OrderStatus, PaymentStatus, Role } from '@ddc/shared';
+import { DEFAULT_PAGE_SIZE, OrderStatus, PaymentMode, PaymentStatus, Role } from '@ddc/shared';
 import type { OrderListQuery } from '@ddc/shared';
 
 // ── Customer: place order ─────────────────────────────────────────────────────
@@ -302,6 +303,26 @@ export const cancelOrder = async (req: Request, res: Response, next: NextFunctio
                  : 'CANCEL_STORE';
     const order = await transitionOrder({ orderId: req.params['id'], event, actorId: req.user!.sub, actorRole: role, payload: req.body });
     res.json({ ok: true, data: { order } });
+  } catch (err) { next(err); }
+};
+
+// ── Store: confirm UPI payment manually ──────────────────────────────────────
+
+export const confirmPayment = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params as { id: string };
+    const { transactionRef } = req.body as { transactionRef: string };
+    const storeId = req.user!.storeId;
+    const order = await Order.findOne({ _id: id, storeId });
+    if (!order) return next(new AppError(404, 'ORDER_NOT_FOUND', 'Order not found'));
+    if (order.paymentMode !== PaymentMode.ONLINE) {
+      return next(new AppError(400, 'INVALID_OPERATION', 'Order is COD — no online payment to confirm'));
+    }
+    if (order.paymentStatus === PaymentStatus.PAID) {
+      return next(new AppError(409, 'ALREADY_PAID', 'Order already paid'));
+    }
+    await markInvoicePaid(order.gatewayOrderId ?? `manual_${order._id.toString()}`, transactionRef ?? 'manual');
+    res.json({ ok: true, data: { message: 'Payment confirmed' } });
   } catch (err) { next(err); }
 };
 

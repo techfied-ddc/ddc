@@ -10,37 +10,37 @@ import type { TokenPair } from './token.service.js';
 
 const googleClient = new google.auth.OAuth2(config.GOOGLE_CLIENT_ID);
 
-// ── Phone OTP ─────────────────────────────────────────────────────────────────
+// ── Email OTP ─────────────────────────────────────────────────────────────────
 
-export const initiatePhoneLogin = async (phone: string): Promise<void> => {
-  await sendLoginOtp(phone);
+export const initiateEmailLogin = async (email: string): Promise<void> => {
+  await sendLoginOtp(email);
 };
 
-export const completePhoneLogin = async (
-  phone: string,
+export const completeEmailLogin = async (
+  email: string,
   otp: string,
 ): Promise<{ tokens: TokenPair; userId: string; isNew: boolean }> => {
-  await verifyLoginOtp(phone, otp);
+  await verifyLoginOtp(email, otp);
 
   let isNew = false;
-  let user = await User.findOne({ phone });
+  let user = await User.findOne({ email: email.toLowerCase() });
 
   if (!user) {
     // First-time customer registration via OTP
     user = await User.create({
-      phone,
+      email:       email.toLowerCase(),
       name:        'Customer',
       role:        Role.CUSTOMER,
       status:      UserStatus.ACTIVE,
-      authMethods: [AuthMethod.PHONE_OTP],
+      authMethods: [AuthMethod.EMAIL_OTP],
     });
     isNew = true;
   } else if (user.status !== UserStatus.ACTIVE) {
     throw AppError.forbidden('Your account has been deactivated. Please contact support.');
   }
 
-  if (!user.authMethods.includes(AuthMethod.PHONE_OTP)) {
-    user.authMethods.push(AuthMethod.PHONE_OTP);
+  if (!user.authMethods.includes(AuthMethod.EMAIL_OTP)) {
+    user.authMethods.push(AuthMethod.EMAIL_OTP);
     await user.save();
   }
 

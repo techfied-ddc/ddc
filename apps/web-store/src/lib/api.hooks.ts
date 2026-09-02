@@ -61,6 +61,18 @@ export function useIssueInvoice(orderId: string) {
   });
 }
 
+export function useConfirmPayment(orderId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { transactionRef: string }) => api.post(`/api/v1/orders/${orderId}/confirm-payment`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['store-order', orderId] });
+      qc.invalidateQueries({ queryKey: ['store-orders'] });
+      qc.invalidateQueries({ queryKey: ['order-invoice', orderId] });
+    },
+  });
+}
+
 // ── Store: Riders ─────────────────────────────────────────────────────────────
 
 export function useStoreRiders() {

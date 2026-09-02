@@ -8,7 +8,7 @@ import type { Role } from '@ddc/shared';
 
 const OTP_RESEND_SECONDS = 30;
 
-interface LocationState { phone?: string }
+interface LocationState { email?: string }
 interface VerifyResponse { data: { accessToken: string; user: { _id: string; role: Role; storeId?: string } } }
 
 export default function OtpVerifyPage() {
@@ -16,7 +16,7 @@ export default function OtpVerifyPage() {
   const location  = useLocation();
   const setAuth   = useAuthStore((s) => s.setAuth);
 
-  const phone = (location.state as LocationState)?.phone ?? '';
+  const email = (location.state as LocationState)?.email ?? '';
 
   const [otp, setOtp]           = useState('');
   const [error, setError]       = useState('');
@@ -26,11 +26,11 @@ export default function OtpVerifyPage() {
   const timerRef = useRef<ReturnType<typeof setInterval>>(null!);
 
   useEffect(() => {
-    if (!phone) { navigate('/login', { replace: true }); return; }
+    if (!email) { navigate('/login', { replace: true }); return; }
     startCountdown();
     return () => clearInterval(timerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone]);
+  }, [email]);
 
   const startCountdown = () => {
     clearInterval(timerRef.current);
@@ -48,7 +48,7 @@ export default function OtpVerifyPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/api/v1/auth/otp/verify', { phone, otp: value }) as VerifyResponse;
+      const res = await api.post('/api/v1/auth/otp/verify', { email, otp: value }) as VerifyResponse;
       const { accessToken, user: u } = res.data;
       setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
       navigate('/', { replace: true });
@@ -65,7 +65,7 @@ export default function OtpVerifyPage() {
     setResending(true);
     setError('');
     try {
-      await api.post('/api/v1/auth/otp/send', { phone });
+      await api.post('/api/v1/auth/otp/send', { email });
       startCountdown();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not resend OTP. Please try again.');
@@ -74,9 +74,14 @@ export default function OtpVerifyPage() {
     }
   };
 
-  const maskedPhone = phone.length > 4
-    ? `${phone.slice(0, 3)}${'•'.repeat(phone.length - 7)}${phone.slice(-4)}`
-    : phone;
+  const maskedEmail = (() => {
+    const atIdx = email.indexOf('@');
+    if (atIdx <= 0) return email;
+    const local  = email.slice(0, atIdx);
+    const domain = email.slice(atIdx);
+    const visible = local.slice(0, Math.min(2, local.length));
+    return `${visible}${'•'.repeat(Math.max(2, local.length - 2))}${domain}`;
+  })();
 
   return (
     <GlassCard className="p-6 space-y-6">
@@ -85,14 +90,14 @@ export default function OtpVerifyPage() {
           onClick={() => navigate('/login')}
           className="text-xs text-[var(--gold)] mb-4 flex items-center gap-1 hover:opacity-80 transition-opacity"
         >
-          ← Change number
+          ← Change email
         </button>
         <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">
           Enter the code
         </h2>
         <p className="text-sm text-[var(--text-muted)] mt-1">
           A 6-digit code was sent to{' '}
-          <span className="font-mono text-[var(--text-primary)]">{maskedPhone}</span>.
+          <span className="font-mono text-[var(--text-primary)]">{maskedEmail}</span>.
         </p>
       </div>
 

@@ -5,11 +5,11 @@ import { zIndianMobile } from './common.js';
 // ── Phone OTP login ─────────────────────────────────────────────────────────
 
 export const zSendOtpBody = z.object({
-  phone: zIndianMobile,
+  email: z.string().email(),
 });
 
 export const zVerifyOtpBody = z.object({
-  phone: zIndianMobile,
+  email: z.string().email(),
   otp:   z.string().length(6, 'OTP must be exactly 6 digits').regex(/^\d+$/, 'OTP must be numeric'),
 });
 

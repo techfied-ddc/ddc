@@ -1,3 +1,4 @@
+# DEPRECATED — project migrated to Railway. See apps/api/railway.toml
 services:
   - type: web
     name: ddc-api

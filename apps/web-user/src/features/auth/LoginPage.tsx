@@ -7,21 +7,19 @@ import { useAuthStore } from '../../stores/auth.store.js';
 import { initGoogleSignIn } from '../../lib/google-auth.js';
 import type { Role } from '@ddc/shared';
 
-const COUNTRY_CODE = '+91';
 const GOOGLE_CLIENT_ID = (import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined) ?? '';
 
 interface GoogleAuthResponse { data: { accessToken: string; userId: string; isNew: boolean } }
 
-export default function PhoneLoginPage() {
-  const [digits, setDigits]   = useState('');
-  const [error, setError]     = useState('');
+export default function LoginPage() {
+  const [email,   setEmail]   = useState('');
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate    = useNavigate();
-  const setAuth     = useAuthStore((s) => s.setAuth);
+  const navigate     = useNavigate();
+  const setAuth      = useAuthStore((s) => s.setAuth);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const phone   = `${COUNTRY_CODE}${digits}`;
-  const isValid = /^\d{10}$/.test(digits);
+  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   // ── Google Sign-In ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -55,14 +53,14 @@ export default function PhoneLoginPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Phone OTP ─────────────────────────────────────────────────────────────
+  // ── Email OTP ─────────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (!isValid || loading) return;
     setError('');
     setLoading(true);
     try {
-      await api.post('/api/v1/auth/otp/send', { phone: digits });
-      navigate('/login/otp', { state: { phone } });
+      await api.post('/api/v1/auth/otp/send', { email: email.trim() });
+      navigate('/login/otp', { state: { email: email.trim() } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -81,34 +79,29 @@ export default function PhoneLoginPage() {
           Sign in
         </h2>
         <p className="text-sm text-[var(--text-muted)] mt-1">
-          Enter your mobile number to receive a one-time code.
+          Enter your email address to receive a one-time code.
         </p>
       </div>
 
-      {/* Phone input */}
+      {/* Email input */}
       <div className="space-y-2">
-        <label htmlFor="phone-input" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
-          Mobile number
+        <label htmlFor="email-input" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
+          Email address
         </label>
-        <div className="flex items-center gap-2 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
-          <span className="text-[var(--text-muted)] font-mono text-sm select-none">{COUNTRY_CODE}</span>
-          <div className="w-px h-5 bg-[var(--border)]" />
+        <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
           <input
-            id="phone-input"
-            type="tel"
-            inputMode="numeric"
-            maxLength={10}
-            value={digits}
+            id="email-input"
+            type="email"
+            value={email}
             onChange={(e) => {
-              const v = e.target.value.replace(/\D/g, '');
-              setDigits(v);
+              setEmail(e.target.value);
               if (error) setError('');
             }}
             onKeyDown={handleKey}
-            placeholder="98765 43210"
-            className="flex-1 bg-transparent text-[var(--text-primary)] font-mono text-lg placeholder:text-[var(--text-subtle)] outline-none"
+            placeholder="you@example.com"
+            className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
             autoFocus
-            autoComplete="tel-national"
+            autoComplete="email"
           />
         </div>
 

@@ -7,7 +7,7 @@ import {
   zPlaceOrderBody, zRejectOrderBody, zAssignRiderBody,
   zVerifyPickupOtpBody, zVerifyDeliveryOtpBody,
   zReceiveAtStoreBody, zCancelOrderBody, zRateOrderBody,
-  zAdminAssignOrderBody, zOrderListQuery,
+  zAdminAssignOrderBody, zOrderListQuery, zConfirmPaymentBody,
 } from '@ddc/shared';
 import {
   place, listMine, getMine,
@@ -20,6 +20,7 @@ import {
   assignDelivery, verifyDelivery, acceptDelivery, collectCod,
   getRiderJobs,
   rateOrder, cancelOrder,
+  confirmPayment,
 } from './orders.controller.js';
 
 export const ordersRouter = Router();
@@ -42,7 +43,8 @@ ordersRouter.post ('/store/:id/receive',         authenticate, authorize(...stor
 ordersRouter.post ('/store/:id/processing',      authenticate, authorize(...storeRoles), markProcessing);
 ordersRouter.post ('/store/:id/ready',           authenticate, authorize(...storeRoles), markReady);
 ordersRouter.post ('/store/:id/assign-delivery', authenticate, authorize(...storeRoles), validate(zAssignRiderBody), assignDelivery);
-ordersRouter.post ('/store/:id/cancel',          authenticate, authorize(...storeRoles), validate(zCancelOrderBody), cancelOrder);
+ordersRouter.post ('/store/:id/cancel',           authenticate, authorize(...storeRoles), validate(zCancelOrderBody), cancelOrder);
+ordersRouter.post ('/store/:id/confirm-payment',  authenticate, authorize(...storeRoles), validate(zConfirmPaymentBody), confirmPayment);
 
 // ── Rider ─────────────────────────────────────────────────────────────────────
 ordersRouter.get  ('/rider/jobs',                authenticate, authorize(Role.RIDER), getRiderJobs);

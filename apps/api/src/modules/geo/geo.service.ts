@@ -55,7 +55,7 @@ export const routeOrder = async (input: RoutingInput): Promise<RoutingResult | n
     } | undefined;
     const { radiusKm, centerLat, centerLng } = svcArea ?? {};
     if (radiusKm && centerLat != null && centerLng != null) {
-      const distKm = await getDistanceKm({ lat, lng } as LatLng, { lat: centerLat, lng: centerLng } as LatLng);
+      const distKm = getDistanceKm({ lat, lng } as LatLng, { lat: centerLat, lng: centerLng } as LatLng);
       if (distKm != null && distKm <= radiusKm) {
         return { storeId: store._id.toString(), method: RoutingMethod.RADIUS };
       }

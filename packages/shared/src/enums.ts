@@ -138,6 +138,7 @@ export enum RoutingMethod {
 
 export enum AuthMethod {
   PHONE_OTP = 'PHONE_OTP',
+  EMAIL_OTP = 'EMAIL_OTP',
   GOOGLE    = 'GOOGLE',
   PASSWORD  = 'PASSWORD',
 }

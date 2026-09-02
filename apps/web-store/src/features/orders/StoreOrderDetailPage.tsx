@@ -5,7 +5,7 @@ import {
   useStoreOrderDetail, useOrderInvoice,
   useAcceptOrder, useRejectOrder, useAssignPickup, useReceiveAtStore,
   useMarkProcessing, useMarkReady, useAssignDelivery, useIssueInvoice,
-  useStoreRiders,
+  useStoreRiders, useConfirmPayment,
 } from '../../lib/api.hooks.js';
 import { statusLabel, statusColor, formatDateTime, formatRupees, mapsNavUrl } from '../../lib/format.js';
 import { uploadToCloudinary } from '../../lib/cloudinary.js';
@@ -212,14 +212,17 @@ export default function StoreOrderDetailPage() {
   const [photos, setPhotos]         = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [transactionRef, setTransactionRef] = useState('');
+  const [confirmMsg, setConfirmMsg]         = useState('');
 
-  const accept       = useAcceptOrder(id!);
-  const reject       = useRejectOrder(id!);
-  const assignPickup = useAssignPickup(id!);
-  const receive      = useReceiveAtStore(id!);
-  const processing   = useMarkProcessing(id!);
-  const ready        = useMarkReady(id!);
-  const assignDlv    = useAssignDelivery(id!);
+  const accept          = useAcceptOrder(id!);
+  const reject          = useRejectOrder(id!);
+  const assignPickup    = useAssignPickup(id!);
+  const receive         = useReceiveAtStore(id!);
+  const processing      = useMarkProcessing(id!);
+  const ready           = useMarkReady(id!);
+  const assignDlv       = useAssignDelivery(id!);
+  const confirmPayment  = useConfirmPayment(id!);
 
   if (isLoading || !order) {
     return (
@@ -336,6 +339,57 @@ export default function StoreOrderDetailPage() {
                 <span className="text-[var(--gold)]">{formatRupees(invoice.totalPaise)}</span>
               </div>
             </div>
+          </GlassCard>
+        </Reveal>
+      )}
+
+      {/* Online Payment — Awaiting Confirmation */}
+      {order.paymentMode === 'ONLINE' && order.paymentStatus === 'PENDING' && (
+        <Reveal delay={0.09}>
+          <GlassCard className="p-4 space-y-3 border border-[var(--gold)]/30">
+            <h3 className="text-xs font-semibold text-[var(--gold)] uppercase tracking-wide">
+              Online Payment — Awaiting Confirmation
+            </h3>
+            <p className="text-xs text-[var(--text-muted)]">
+              Ask the customer to show their UPI payment confirmation and enter the transaction reference below.
+            </p>
+            <div>
+              <label className="text-xs text-[var(--text-muted)] block mb-1">UPI Transaction Reference</label>
+              <input
+                type="text"
+                value={transactionRef}
+                onChange={(e) => { setTransactionRef(e.target.value); setConfirmMsg(''); }}
+                placeholder="e.g. 407812345678"
+                className="w-full bg-[var(--bg-raised)] border border-[var(--border)] rounded-xl px-3 py-2.5 text-[var(--text-primary)] text-sm font-mono placeholder:text-[var(--text-subtle)] focus:border-[var(--gold)] outline-none transition-colors"
+              />
+            </div>
+            {confirmMsg && (
+              <p className={`text-xs text-center ${confirmPayment.isError ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`}>
+                {confirmMsg}
+              </p>
+            )}
+            <button
+              onClick={() => {
+                if (!transactionRef.trim() || confirmPayment.isPending) return;
+                setConfirmMsg('');
+                confirmPayment.mutate(
+                  { transactionRef: transactionRef.trim() },
+                  {
+                    onSuccess: () => {
+                      setConfirmMsg('Payment marked as received.');
+                      setTransactionRef('');
+                    },
+                    onError: (err) => {
+                      setConfirmMsg((err as Error).message ?? 'Failed to confirm payment. Please try again.');
+                    },
+                  },
+                );
+              }}
+              disabled={!transactionRef.trim() || confirmPayment.isPending}
+              className="w-full py-2.5 rounded-xl bg-[var(--gold)] text-[#0B0B0C] font-semibold text-sm disabled:opacity-50"
+            >
+              {confirmPayment.isPending ? 'Confirming…' : 'Mark Payment Received'}
+            </button>
           </GlassCard>
         </Reveal>
       )}

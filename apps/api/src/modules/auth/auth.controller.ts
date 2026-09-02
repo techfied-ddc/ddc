@@ -9,7 +9,8 @@ import {
 // POST /api/v1/auth/otp/send
 export const sendOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await authService.initiatePhoneLogin(req.body.phone);
+    const { email } = req.body as { email: string };
+    await authService.initiateEmailLogin(email);
     res.json({ ok: true, data: { message: 'OTP sent.' } });
   } catch (err) { next(err); }
 };
@@ -17,8 +18,8 @@ export const sendOtp = async (req: Request, res: Response, next: NextFunction) =
 // POST /api/v1/auth/otp/verify
 export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { phone, otp } = req.body;
-    const { tokens, userId, isNew } = await authService.completePhoneLogin(phone, otp);
+    const { email, otp } = req.body as { email: string; otp: string };
+    const { tokens, userId, isNew } = await authService.completeEmailLogin(email, otp);
 
     setRefreshCookie(res, tokens.refreshToken);
 

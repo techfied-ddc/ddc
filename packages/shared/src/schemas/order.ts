@@ -68,6 +68,12 @@ export const zAdminAssignOrderBody = z.object({
   reason:  z.string().max(500).optional(),
 });
 
+// ── Store: confirm UPI payment ────────────────────────────────────────────────
+
+export const zConfirmPaymentBody = z.object({
+  transactionRef: z.string().min(1).max(100),
+});
+
 // ── List / filter ─────────────────────────────────────────────────────────────
 
 export const zOrderListQuery = zPaginationQuery.extend({
@@ -78,6 +84,7 @@ export const zOrderListQuery = zPaginationQuery.extend({
   search:   z.string().max(100).optional(), // orderRef or customer name
 });
 
+export type ConfirmPaymentBody   = z.infer<typeof zConfirmPaymentBody>;
 export type CartItem             = z.infer<typeof zCartItem>;
 export type PlaceOrderBody       = z.infer<typeof zPlaceOrderBody>;
 export type RejectOrderBody      = z.infer<typeof zRejectOrderBody>;

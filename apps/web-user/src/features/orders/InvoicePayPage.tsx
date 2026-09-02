@@ -44,10 +44,13 @@ export default function InvoicePayPage() {
   const initiatePayment = useInitiatePayment();
   const verifyPayment   = useVerifyPayment();
 
-  const [loading,     setLoading]     = useState(false);
-  const [success,     setSuccess]     = useState(false);
-  const [error,       setError]       = useState('');
-  const [pdfLoading,  setPdfLoading]  = useState(false);
+  const [loading,       setLoading]       = useState(false);
+  const [success,       setSuccess]       = useState(false);
+  const [error,         setError]         = useState('');
+  const [pdfLoading,    setPdfLoading]    = useState(false);
+  // UPI link flow — set to 'awaiting_confirmation' after redirecting to the UPI app
+  const [paymentState,  setPaymentState]  = useState<'idle' | 'awaiting_confirmation'>('idle');
+  const [paidMsg,       setPaidMsg]       = useState('');
 
   const order   = orderData;
   const invoice = invoiceData;
@@ -58,8 +61,6 @@ export default function InvoicePayPage() {
     setError('');
 
     try {
-      await loadRazorpayScript();
-
       const payData = await initiatePayment.mutateAsync({ orderId: id! });
       const { gatewayOrderId, amountPaise, keyId, invoiceRef, orderRef } = payData as {
         gatewayOrderId: string;
@@ -70,31 +71,48 @@ export default function InvoicePayPage() {
         orderRef: string;
       };
 
-      const rzp = new window.Razorpay({
-        key:         keyId,
-        amount:      amountPaise,
-        currency:    'INR',
-        order_id:    gatewayOrderId,
-        name:        'Desire Premium Dry Cleaning',
-        description: `Invoice ${invoiceRef} · Order ${orderRef}`,
-        theme:       { color: '#D4AF37' },
-        prefill:     { name: '', contact: '' },
-        handler: async (response) => {
-          try {
-            await verifyPayment.mutateAsync(response);
-            setSuccess(true);
-          } catch (e) {
-            setError((e as Error).message ?? 'Payment verification failed. Please contact support.');
-          }
-        },
-      });
+      if (keyId.startsWith('upi://')) {
+        // UPI deep-link flow — open GPay / PhonePe / Paytm on the device
+        setPaymentState('awaiting_confirmation');
+        window.location.href = keyId;
+        // Note: execution continues here on desktop / browsers that ignore the deep link
+        return;
+      }
 
-      rzp.on('payment.failed', () => {
-        setError('Payment failed. Please try again.');
-        setLoading(false);
-      });
+      if (keyId.startsWith('rzp_')) {
+        // Razorpay Checkout flow
+        await loadRazorpayScript();
 
-      rzp.open();
+        const rzp = new window.Razorpay({
+          key:         keyId,
+          amount:      amountPaise,
+          currency:    'INR',
+          order_id:    gatewayOrderId,
+          name:        'Desire Premium Dry Cleaning',
+          description: `Invoice ${invoiceRef} · Order ${orderRef}`,
+          theme:       { color: '#D4AF37' },
+          prefill:     { name: '', contact: '' },
+          handler: async (response) => {
+            try {
+              await verifyPayment.mutateAsync(response);
+              setSuccess(true);
+            } catch (e) {
+              setError((e as Error).message ?? 'Payment verification failed. Please contact support.');
+            }
+          },
+        });
+
+        rzp.on('payment.failed', () => {
+          setError('Payment failed. Please try again.');
+          setLoading(false);
+        });
+
+        rzp.open();
+        return;
+      }
+
+      // Unknown gateway key — surface an error rather than silently failing
+      setError('Payment gateway is not configured correctly. Please contact support.');
     } catch (e) {
       setError((e as Error).message ?? 'Could not initiate payment. Please try again.');
     } finally {
@@ -216,27 +234,60 @@ export default function InvoicePayPage() {
 
       {order.paymentMode === 'ONLINE' && invoice.status === 'ISSUED' && (
         <Reveal delay={0.1}>
-          <GlassCard className="p-5 space-y-4">
-            <p className="text-sm text-[var(--text-muted)]">
-              Pay securely online via Razorpay. Your payment is protected.
-            </p>
+          {paymentState === 'awaiting_confirmation' ? (
+            /* UPI awaiting-confirmation state */
+            <GlassCard className="p-5 space-y-4 border border-[var(--gold)]/30">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl mt-0.5">💳</span>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">
+                    Payment initiated
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Please complete the payment in your UPI app.
+                  </p>
+                </div>
+              </div>
 
-            {error && (
-              <p className="text-sm text-[var(--danger)] text-center">{error}</p>
-            )}
+              <p className="text-xs text-[var(--text-subtle)] bg-[var(--bg-raised)] rounded-xl p-3">
+                Your order will be confirmed once our store verifies your payment.
+              </p>
 
-            <button
-              onClick={handlePay}
-              disabled={loading || initiatePayment.isPending}
-              className="w-full py-3 rounded-xl bg-[var(--gold)] text-[#0B0B0C] font-semibold text-base disabled:opacity-50"
-            >
-              {loading ? 'Opening payment…' : `Pay ${formatRupees(invoice.totalPaise)}`}
-            </button>
+              {paidMsg ? (
+                <p className="text-sm text-[var(--text-muted)] text-center">{paidMsg}</p>
+              ) : (
+                <button
+                  onClick={() => setPaidMsg("Please wait — the store will confirm your payment shortly.")}
+                  className="w-full py-3 rounded-xl border border-[var(--gold)] text-[var(--gold)] font-semibold text-sm"
+                >
+                  I&apos;ve paid
+                </button>
+              )}
+            </GlassCard>
+          ) : (
+            /* Normal pay button */
+            <GlassCard className="p-5 space-y-4">
+              <p className="text-sm text-[var(--text-muted)]">
+                Pay securely online. Your payment is protected.
+              </p>
 
-            <p className="text-xs text-[var(--text-subtle)] text-center">
-              Powered by Razorpay · 256-bit SSL
-            </p>
-          </GlassCard>
+              {error && (
+                <p className="text-sm text-[var(--danger)] text-center">{error}</p>
+              )}
+
+              <button
+                onClick={handlePay}
+                disabled={loading || initiatePayment.isPending}
+                className="w-full py-3 rounded-xl bg-[var(--gold)] text-[#0B0B0C] font-semibold text-base disabled:opacity-50"
+              >
+                {loading ? 'Opening payment…' : `Pay ${formatRupees(invoice.totalPaise)}`}
+              </button>
+
+              <p className="text-xs text-[var(--text-subtle)] text-center">
+                256-bit SSL encrypted
+              </p>
+            </GlassCard>
+          )}
         </Reveal>
       )}
 

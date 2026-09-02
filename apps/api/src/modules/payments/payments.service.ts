@@ -9,6 +9,7 @@ import { InvoiceStatus, PaymentMode, PaymentStatus } from '@ddc/shared';
 import type { PaymentProvider } from './payment.adapter.js';
 import { RazorpayProvider } from './razorpay.adapter.js';
 import { MockPaymentProvider } from './mock.adapter.js';
+import { UpiLinkProvider } from './upi-link.adapter.js';
 import { logger } from '../../lib/logger.js';
 
 // ── Provider factory ──────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ let _provider: PaymentProvider | null = null;
 export function getPaymentProvider(override?: string): PaymentProvider {
   const name = override ?? config.PAYMENT_PROVIDER;
   if (name === 'razorpay') return new RazorpayProvider();
+  if (name === 'upi_link') return new UpiLinkProvider();
   _provider ??= new MockPaymentProvider();
   return _provider;
 }

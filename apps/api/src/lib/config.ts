@@ -37,7 +37,9 @@ const schema = z.object({
   SMS_OTP_TEMPLATE_ID: z.string().optional(), // alias for MSG91 template ID
 
   // Payment
-  PAYMENT_PROVIDER:         z.enum(['razorpay', 'cashfree', 'mock']).default('mock'),
+  PAYMENT_PROVIDER:         z.enum(['razorpay', 'cashfree', 'mock', 'upi_link']).default('upi_link'),
+  UPI_VPA:                  z.string().optional(),
+  UPI_DISPLAY_NAME:         z.string().default('Desire Dry Cleaning'),
   RAZORPAY_KEY_ID:          z.string().optional(),
   RAZORPAY_KEY_SECRET:      z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET:  z.string().optional(),
@@ -50,12 +52,13 @@ const schema = z.object({
   CLOUDINARY_API_KEY:    z.string(),
   CLOUDINARY_API_SECRET: z.string(),
 
-  // Google Maps
-  GOOGLE_MAPS_API_KEY: z.string(),
+  // Geocoding (OpenCage — free tier, no billing card)
+  OPENCAGE_API_KEY: z.string().optional(),
 
   // Email
-  EMAIL_PROVIDER: z.enum(['sendgrid', 'smtp', 'mock']).default('mock'),
+  EMAIL_PROVIDER: z.enum(['sendgrid', 'smtp', 'mock', 'resend']).default('resend'),
   EMAIL_API_KEY:  z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM:     z.string().email().default('noreply@desiredrycleaning.in'),
 
   // Web Push

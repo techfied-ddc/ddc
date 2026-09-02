@@ -1,51 +1,42 @@
-import { Client, UnitSystem } from '@googlemaps/google-maps-services-js';
-import type { GeocodeResult } from '@googlemaps/google-maps-services-js';
+// maps.ts — geocoding via OpenCage (free tier), distance via Haversine (no API)
 import { config } from './config.js';
 
-const client = new Client();
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
 
-export interface LatLng { lat: number; lng: number; }
+// Pure TypeScript Haversine — no external API call
+export function getDistanceKm(origin: LatLng, dest: LatLng): number {
+  const R = 6371;
+  const dLat = ((dest.lat - origin.lat) * Math.PI) / 180;
+  const dLng = ((dest.lng - origin.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((origin.lat * Math.PI) / 180) *
+      Math.cos((dest.lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
-export const geocodePincode = async (pincode: string): Promise<LatLng | null> => {
-  const res = await client.geocode({
-    params: {
-      address: `${pincode}, India`,
-      key: config.GOOGLE_MAPS_API_KEY,
-      region: 'IN',
-    },
-  });
+async function opencageGeocode(query: string): Promise<LatLng | null> {
+  const key = config.OPENCAGE_API_KEY;
+  if (!key) return null;
+  try {
+    const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${key}&countrycode=in&limit=1&no_annotations=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results: Array<{ geometry: { lat: number; lng: number } }> };
+    const first = data.results[0];
+    if (!first) return null;
+    return { lat: first.geometry.lat, lng: first.geometry.lng };
+  } catch {
+    return null;
+  }
+}
 
-  const result: GeocodeResult | undefined = res.data.results[0];
-  if (!result) return null;
+export const geocodePincode = (pincode: string): Promise<LatLng | null> =>
+  opencageGeocode(`${pincode}, India`);
 
-  const { lat, lng } = result.geometry.location;
-  return { lat, lng };
-};
-
-export const geocodeAddress = async (address: string): Promise<LatLng | null> => {
-  const res = await client.geocode({
-    params: { address, key: config.GOOGLE_MAPS_API_KEY, region: 'IN' },
-  });
-
-  const result: GeocodeResult | undefined = res.data.results[0];
-  if (!result) return null;
-
-  const { lat, lng } = result.geometry.location;
-  return { lat, lng };
-};
-
-export const getDistanceKm = async (origin: LatLng, destination: LatLng): Promise<number | null> => {
-  const res = await client.distancematrix({
-    params: {
-      origins:      [`${origin.lat},${origin.lng}`],
-      destinations: [`${destination.lat},${destination.lng}`],
-      key:          config.GOOGLE_MAPS_API_KEY,
-      units:        UnitSystem.metric,
-    },
-  });
-
-  const element = res.data.rows[0]?.elements[0];
-  if (!element || element.status !== 'OK') return null;
-
-  return (element.distance?.value ?? 0) / 1000;
-};
+export const geocodeAddress = (address: string): Promise<LatLng | null> =>
+  opencageGeocode(address);
