@@ -3,23 +3,51 @@
 .env.*
 !.env.example
 
-# Compiled outputs (built inside Docker)
+# Compiled outputs and installed modules (built/installed inside Docker)
 **/dist
 **/node_modules
 
 # Dev/test artifacts
 **/.turbo
 coverage
+e2e/fixtures
+e2e/specs
+e2e/playwright.config.ts
 e2e/test-results
 e2e/playwright-report
+
+# Frontend app SOURCE — only package.json is needed for pnpm install
+# (the actual source is not needed; only apps/api/src is copied explicitly)
+apps/web-website/src
+apps/web-website/public
+apps/web-website/index.html
+apps/web-website/vite.config.*
+apps/web-website/tailwind.config.*
+apps/web-website/postcss.config.*
+apps/web-website/vercel.json
+apps/web-user/src
+apps/web-user/public
+apps/web-user/index.html
+apps/web-user/vite.config.*
+apps/web-user/tailwind.config.*
+apps/web-user/postcss.config.*
+apps/web-user/vercel.json
+apps/web-store/src
+apps/web-store/public
+apps/web-store/index.html
+apps/web-store/vite.config.*
+apps/web-store/tailwind.config.*
+apps/web-store/postcss.config.*
+apps/web-store/vercel.json
+apps/web-admin/src
+apps/web-admin/public
+apps/web-admin/index.html
+apps/web-admin/vite.config.*
+apps/web-admin/tailwind.config.*
+apps/web-admin/postcss.config.*
+apps/web-admin/vercel.json
 
 # Git and editor
 .git
 .gitignore
 **/.DS_Store
-
-# Other frontend apps (api build only needs packages/ and apps/api/)
-apps/web-website
-apps/web-user
-apps/web-store
-apps/web-admin

@@ -1,30 +1,41 @@
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# ── Install + build ────────────────────────────────────────────────────────────
+# ── Install phase ──────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
 
-# Workspace manifests first — cached layer when only source changes
+# Workspace root manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
-COPY packages/config/  ./packages/config/
-COPY packages/shared/  ./packages/shared/
-COPY apps/api/package.json ./apps/api/package.json
 
-# Install all workspace deps (frozen for reproducibility)
+# All workspace package.json files — pnpm needs every member's manifest
+# to resolve the lockfile correctly (even apps we won't build)
+COPY packages/config/        ./packages/config/
+COPY packages/shared/        ./packages/shared/
+COPY packages/ui/package.json ./packages/ui/package.json
+COPY apps/api/package.json          ./apps/api/package.json
+COPY apps/web-website/package.json  ./apps/web-website/package.json
+COPY apps/web-user/package.json     ./apps/web-user/package.json
+COPY apps/web-store/package.json    ./apps/web-store/package.json
+COPY apps/web-admin/package.json    ./apps/web-admin/package.json
+COPY e2e/package.json               ./e2e/package.json
+
+# Install all workspace deps (frozen = deterministic, matches lockfile exactly)
 RUN pnpm install --frozen-lockfile
 
-# Copy API source
-COPY apps/api/src        ./apps/api/src
+# ── Build phase ────────────────────────────────────────────────────────────────
+# Copy API source (only — frontend source excluded via .dockerignore)
+COPY apps/api/src         ./apps/api/src
 COPY apps/api/tsconfig.json ./apps/api/tsconfig.json
 
-# 1. Compile @ddc/shared to CommonJS so it can be required at runtime
+# 1. Compile @ddc/shared to CommonJS — required at runtime by the API
 RUN pnpm --filter @ddc/shared build
 
 # 2. Compile the API
 RUN pnpm --filter @ddc/api build
 
-# 3. Standalone deployment dir — pnpm flattens deps, removes dev deps
+# 3. Create a self-contained deployment dir with production deps only
+#    pnpm deploy flattens the node_modules — no symlinks, no workspace overhead
 RUN pnpm --filter @ddc/api deploy --prod /deploy
 
 # ── Runtime ────────────────────────────────────────────────────────────────────
@@ -32,15 +43,13 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Flat production node_modules from pnpm deploy
+# Flat production node_modules from pnpm deploy (no dev deps, no source)
 COPY --from=builder /deploy .
 
-# Compiled API output (pnpm deploy copies source, not the build output)
+# Freshly compiled dist/ (pnpm deploy copies the package, not its build output)
 COPY --from=builder /app/apps/api/dist ./dist
 
-# Make sure the deployed @ddc/shared has its compiled dist/ available
-# (pnpm deploy copies the workspace package directory; this overwrites the
-# dist/ inside node_modules/@ddc/shared to be safe)
+# Ensure @ddc/shared has its compiled dist/ inside node_modules
 COPY --from=builder /app/packages/shared/dist ./node_modules/@ddc/shared/dist
 
 EXPOSE 4000
