@@ -52,3 +52,50 @@ export const enqueue = async <T>(
 };
 
 export { getQueue };
+
+// ── Typed helpers for common job types ───────────────────────────────────────
+
+export const enqueueNotification = (
+  event: string,
+  customerId: string,
+  orderRef: string,
+  extra?: { totalPaise?: number; otp?: string },
+): Promise<void> =>
+  enqueue(QueueName.NOTIFICATION, `notify:${event}`, {
+    event,
+    customerId,
+    orderRef,
+    ...extra,
+  });
+
+export const enqueueRiderNotification = (
+  riderId: string,
+  orderRef: string,
+  jobType: 'pickup' | 'delivery',
+): Promise<void> =>
+  enqueue(QueueName.NOTIFICATION, 'notify:rider:job', {
+    event: 'rider:job',
+    riderId,
+    orderRef,
+    jobType,
+  });
+
+export const enqueueRefund = (
+  orderId: string,
+  amountPaise?: number,
+  reason?: string,
+): Promise<void> =>
+  enqueue(QueueName.REFUND, 'refund', { orderId, amountPaise, reason });
+
+export const enqueueSettlementClose = (
+  storeId: string,
+  periodFrom: string,
+  periodTo: string,
+  adminId: string,
+): Promise<void> =>
+  enqueue(QueueName.SETTLEMENT_CLOSE, 'settlement-close', {
+    storeId,
+    periodFrom,
+    periodTo,
+    adminId,
+  });

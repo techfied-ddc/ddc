@@ -127,20 +127,21 @@ Claude keeps this current. Status: ☐ todo · ⏳ waiting on user · ✅ done.
 | # | Item | Who | Status | Notes / where the result goes |
 |---|---|---|---|---|
 | M1 | Register domain `desiredrycleaning.in` + DNS access | User | ☐ | Needed for subdomains + TLS (`docs/18` §18.1) |
-| M2 | Create MongoDB Atlas org + `ap-south-1` cluster + DB user + IP allowlist | User | ☐ | → `MONGODB_URI` |
-| M3 | Create Upstash Redis DB | User | ☐ | → `REDIS_URL` |
-| M4 | Create Cloudinary account | User | ☐ | → `CLOUDINARY_*` |
-| M5 | Google Cloud project (owner `techfied.desiredrycleaning@gmail.com`) → OAuth client + Maps JS/Geocoding keys | User | ☐ | → `GOOGLE_CLIENT_*`, `GOOGLE_MAPS_*`; set redirect URIs |
-| M6 | MSG91 account + **DLT** sender ID + approved OTP template | User | ☐ | → `SMS_API_KEY`, `SMS_SENDER_ID`, `SMS_OTP_TEMPLATE_ID` (`ADR-0010`) |
-| M7 | Choose + create payment gateway account (Razorpay recommended) + enable **Route**; webhook secret | User | ☐ | → `RAZORPAY_*` / `CASHFREE_*` (`ADR-0003`) |
-| M8 | Per store: gateway **linked/vendor account + KYC** | User + store owners | ☐ | Unblocks online-fund split (`ADR-0009`) |
-| M9 | Email provider (Brevo/Resend/SES) + verify `desiredrycleaning.in` (SPF/DKIM/DMARC) | User | ☐ | → `EMAIL_*` |
+| M2 | Create MongoDB Atlas org + `ap-south-1` cluster + DB user + IP allowlist | User | ✅ 2026-09-11 | `MONGODB_URI` set in local `.env` |
+| M3 | Create Upstash Redis DB | User | ✅ 2026-09-11 | `REDIS_URL` set in local `.env` |
+| M4 | Create Cloudinary account | User | ✅ 2026-09-11 | `CLOUDINARY_*` set in local `.env` |
+| M5 | Google Cloud project → OAuth client + set redirect URIs | User | ✅ 2026-09-11 | `GOOGLE_CLIENT_ID/SECRET` set; redirect URI = `https://api.desiredrycleaning.in/api/v1/auth/google/callback` for prod |
+| M6 | ~~MSG91~~ **Resend** email OTP (no DLT registration needed) | User | ✅ 2026-09-11 | `RESEND_API_KEY` set in `.env`; domain DNS records still pending (do alongside M1 DNS) |
+| M7 | Payment: **UPI Link** mode (no gateway account needed for MVP) | — | ✅ 2026-09-17 | `PAYMENT_PROVIDER=upi_link`, `UPI_VPA=8700371612@pthdfc` set; Razorpay/Cashfree can be added post-launch |
+| M8 | Per store: gateway linked/vendor account + KYC | Deferred | ⏳ post-launch | Only needed when switching to Razorpay Route; not required with UPI Link |
+| M9 | Verify `desiredrycleaning.in` in Resend (SPF/DKIM/DMARC records at registrar) | User | ☐ | Do alongside M1 DNS; until done, Resend sends from their domain |
 | M10 | Vercel account + 4 projects (root dirs, subdomains) | User | ☐ | See steps below |
-| M11 | Render account + API service (render.yaml exists) | User | ☐ | See steps below |
-| M12 | Sentry projects (API + 4 frontends) | User | ☐ | → `SENTRY_DSN`, `VITE_SENTRY_DSN` |
+| M11 | **Railway** account + API service | User | ☐ | See steps below (replaces Render) |
+| M12 | Sentry projects (API + 4 frontends) | User | ☐ | → `SENTRY_DSN`, `VITE_SENTRY_DSN` — optional for launch |
 | M13 | Provide brand assets: `assets/logo.png` (+ SVG/monogram), any Pantone gold, dark garment photos | User | ☐ | `docs/20` §20.9 |
 | M14 | Provide business values: **GSTIN**, GST rate, default commission %, payout cadence, per-store SLA + pincodes + pickup-slot windows | User | ☐ | Seeds `settings` + each store (`docs/01` §1.8) |
-| M15 | Finalise payment gateway choice (Razorpay vs Cashfree) | User | ☐ | Confirms `ADR-0003` |
+| M15 | ~~Finalise payment gateway choice~~ **Resolved: UPI Link for MVP** | — | ✅ 2026-09-17 | `ADR-0003` confirmed; Razorpay/Cashfree can be wired post-launch |
+| M16 | OpenCage geocoding API key (optional) | User | ☐ | `OPENCAGE_API_KEY`; routing falls back to pincode-only matching without it |
 
 (Claude: add rows as new manual needs appear; move to ✅ with the date when the user
 confirms. Keep this table and `docs/01` §1.8 in sync.)
@@ -176,32 +177,56 @@ Do this once per frontend app (4 total). All `vercel.json` configs are already i
 
 ---
 
-### M11 — Render API service setup (step-by-step)
+### M11 — Railway API service setup (step-by-step)
 
-The `render.yaml` at the repo root defines the service.
+`apps/api/railway.toml` is already in the repo. Railway reads it automatically.
 
-1. Go to **render.com** → **New** → **Blueprint** → connect the DDC GitHub repo.
-2. Render reads `render.yaml` and shows a `ddc-api` service. Click **Apply**.
-3. After creation, go to the service → **Environment** tab. Add every `sync: false` secret:
-   - `MONGODB_URI` (from M2)
-   - `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` — generate each with:
-     `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`
-   - `REDIS_URL` (from M3)
-   - `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` (from M6)
-   - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (from M5)
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (from M4)
-   - `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (from M7)
-   - `GOOGLE_MAPS_API_KEY` (from M5)
-   - `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (run `npx web-push generate-vapid-keys`)
-   - `COOKIE_SECRET` — generate same as JWT secrets above
-4. Under **Settings**, set a **Custom Domain**: `api.desiredrycleaning.in`. Add the CNAME at
-   your registrar. Verify TLS is green.
-5. Also set `ALLOWED_ORIGINS` to the four production subdomain URLs (already set in
-   `render.yaml` but verify it matches after domain setup).
-6. **First deploy:** click **Deploy** manually (autoDeploy is off). Watch logs for
-   `Connected to MongoDB` and `Server listening on port 4000`.
-7. Hit `https://api.desiredrycleaning.in/health` — should return `{"ok":true}`.
-8. Test an SMS OTP login end-to-end with a real phone number.
+1. Go to **railway.app** → **New Project** → **Deploy from GitHub repo** → select the DDC
+   repo. If prompted, authorise the Railway GitHub app.
+2. Railway detects `railway.toml` automatically. It will start a build.
+   **Cancel the first build immediately** — env vars aren't set yet.
+3. Click **Variables** → **Raw Editor** and paste the entire block below, filling in
+   your values. Variables marked `✅ known` already have their values confirmed.
+   ```
+   NODE_ENV=production
+   API_BASE_URL=https://api.desiredrycleaning.in
+   MONGODB_URI=<your Atlas connection string from M2>
+   REDIS_URL=<your Upstash connection string from M3>
+   JWT_ACCESS_SECRET=<run: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))">
+   JWT_REFRESH_SECRET=<run same command — different value>
+   JWT_ACCESS_EXPIRES_IN=15m
+   JWT_REFRESH_EXPIRES_IN=30d
+   COOKIE_DOMAIN=desiredrycleaning.in
+   COOKIE_SECURE=true
+   CORS_ORIGINS=https://desiredrycleaning.in,https://user.desiredrycleaning.in,https://store.desiredrycleaning.in,https://admin.desiredrycleaning.in
+   GOOGLE_CLIENT_ID=672790556603-3874o2vsv1kbopmraersbjvjvu10aj7k.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=<from local apps/api/.env — NEVER put in git>
+   GOOGLE_REDIRECT_URI=https://api.desiredrycleaning.in/api/v1/auth/google/callback
+   EMAIL_PROVIDER=resend
+   RESEND_API_KEY=<from local apps/api/.env — NEVER put in git>
+   EMAIL_FROM=noreply@desiredrycleaning.in
+   PAYMENT_PROVIDER=upi_link
+   UPI_VPA=<your UPI VPA — from local .env>
+   UPI_DISPLAY_NAME=Desire Premium Dry Cleaning
+   CLOUDINARY_CLOUD_NAME=<from local apps/api/.env>
+   CLOUDINARY_API_KEY=<from local apps/api/.env>
+   CLOUDINARY_API_SECRET=<from local apps/api/.env — NEVER put in git>
+   VAPID_PUBLIC_KEY=<run: npx web-push generate-vapid-keys — public key from local .env>
+   VAPID_PRIVATE_KEY=<NEVER put in git — private key from local .env>
+   VAPID_SUBJECT=mailto:techfied.desiredrycleaning@gmail.com
+   ```
+4. Click **Deploy** → watch the build logs. A successful start shows
+   `DDC API started` with the port number.
+5. In the service's **Settings** → **Networking**, click **Generate Domain** (get a
+   `*.up.railway.app` URL first). Test the health endpoint:
+   `https://<your-service>.up.railway.app/healthz` → should return `{"ok":true,"service":"ddc-api"}`.
+6. Still in **Settings → Networking**, click **Add Custom Domain** →
+   enter `api.desiredrycleaning.in`. Railway shows you a CNAME record.
+7. At your DNS registrar add that CNAME. Wait for propagation (usually < 5 min on Cloudflare).
+8. TLS auto-provisioned. Hit `https://api.desiredrycleaning.in/healthz` — should return `{"ok":true}`.
+9. Seed the Atlas cluster: in your local terminal run
+   `pnpm --filter @ddc/api seed` (with `MONGODB_URI` pointing at production Atlas).
+10. Test an email OTP login end-to-end using the production URL.
 
 ## 22.9 Session log (living, newest first)
 
@@ -209,5 +234,7 @@ Claude appends one row per working session.
 
 | Date | Session focus | Outcome | Next |
 |---|---|---|---|
+| 2026-09-17 | Pre-launch audit + bug fixes | Fixed: `railway.toml` healthcheck path (`/health`→`/healthz`), `RESEND_API_KEY` env var name (was `EMAIL_API_KEY`), `vercel.json` outputDirectory (`apps/*/dist`→`dist`), UPI VPA set. M11 docs rewritten for Railway. Manual work log updated to reflect actual completed items. 6 BullMQ workers committed. | Phase 8: Vercel + Railway deploy (M10/M11), DNS, seed prod Atlas |
+| 2026-09-11 | Env vars audit + VAPID keys generation | Redis URL fixed; VAPID keys generated; Resend wired | Railway + Vercel deploy (M10/M11) |
 | 2026-09-01 | Phase 7: deployment configs + env docs + Terms/Privacy pages | `vercel.json` (4 frontends) + `render.yaml` + `.env.example` (5 apps) + Terms/Privacy pages + sitemap.xml/robots.txt + ESLint clean across all packages | Phase 8: E2E tests, performance audit, PWA offline shell verification, accessibility pass |
 | 2026-08-31 | Documentation set + 2 rounds of client answers folded in | Full `docs/` (01–22) + 11 ADRs + memory seeded; no code yet | Await user go-ahead → Phase 0 scaffold (`docs/19`, `docs/21`) |

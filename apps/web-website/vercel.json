@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd ../.. && pnpm --filter @ddc/web-website build",
-  "outputDirectory": "apps/web-website/dist",
-  "installCommand": "pnpm install",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && pnpm install",
   "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

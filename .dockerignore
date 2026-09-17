@@ -1,0 +1,25 @@
+# Never send secrets into the build context
+.env
+.env.*
+!.env.example
+
+# Compiled outputs (built inside Docker)
+**/dist
+**/node_modules
+
+# Dev/test artifacts
+**/.turbo
+coverage
+e2e/test-results
+e2e/playwright-report
+
+# Git and editor
+.git
+.gitignore
+**/.DS_Store
+
+# Other frontend apps (api build only needs packages/ and apps/api/)
+apps/web-website
+apps/web-user
+apps/web-store
+apps/web-admin
