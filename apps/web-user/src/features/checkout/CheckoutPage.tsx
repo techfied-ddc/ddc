@@ -58,7 +58,12 @@ export default function CheckoutPage() {
     setLoadingSlots(true);
     try {
       const res = await api.get(`/api/v1/stores/${storeId}/slots?date=${date}`) as { data: { slots: SlotWindow[] } };
-      setSlots(res.data.slots);
+      // Normalize: ensure every slot has a non-empty, unique windowId string
+      const normalized = (res.data.slots ?? []).map((s, idx) => ({
+        ...s,
+        windowId: s.windowId && s.windowId !== 'undefined' ? s.windowId : `window-${idx}`,
+      }));
+      setSlots(normalized);
     } catch {
       setSlots([]);
     } finally {

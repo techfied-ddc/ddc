@@ -203,8 +203,8 @@ export const listSlots = async (req: Request, res: Response, next: NextFunction)
 
     const slots = store.pickupSlots?.windows
       ?.filter((w) => w.enabled)
-      ?.map((w) => ({
-        windowId: w._id,
+      ?.map((w, idx) => ({
+        windowId: w._id != null ? String(w._id) : `window-${idx}`,
         label:    w.label,
         start:    w.start,
         end:      w.end,

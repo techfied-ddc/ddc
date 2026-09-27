@@ -12,6 +12,7 @@ interface AuthUser {
 interface AuthState {
   user:         AuthUser | null;
   setAuth:      (user: AuthUser, accessToken: string) => void;
+  setStoreId:   (storeId: string) => void;
   clearAuth:    () => void;
   fetchMe:      () => Promise<void>;
 }
@@ -24,6 +25,10 @@ export const useAuthStore = create<AuthState>()(
       setAuth: (user, accessToken) => {
         setAccessToken(accessToken);
         set({ user });
+      },
+
+      setStoreId: (storeId) => {
+        set((s) => ({ user: s.user ? { ...s.user, storeId } : null }));
       },
 
       clearAuth: () => {

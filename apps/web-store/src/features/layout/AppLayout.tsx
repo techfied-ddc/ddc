@@ -1,11 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { subscribeToPush } from '../../lib/push.js';
 import { connectSocket, disconnectSocket } from '../../lib/socket.js';
-import { AppBar, AppBarSpacer, BottomTabBar, BottomTabBarSpacer } from '@ddc/ui';
+import { AppBar, AppBarSpacer, BottomTabBar, BottomTabBarSpacer, GlassCard } from '@ddc/ui';
 import { Role } from '@ddc/shared';
+import { api } from '../../lib/api.js';
 import type { TabItem } from '@ddc/ui';
 
 const LayoutIcon  = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>;
@@ -43,9 +44,63 @@ function riderPathToTab(path: string): string {
   return 'jobs';
 }
 
+interface StoreListItem { _id: string; name: string; address?: { city?: string } }
+
+function AdminStorePicker({ onPick }: { onPick: (id: string) => void }) {
+  const [stores, setStores] = useState<StoreListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/api/v1/stores')
+      .then((r: unknown) => {
+        const res = r as { data: { stores: StoreListItem[] } };
+        setStores(res.data.stores ?? []);
+      })
+      .catch(() => setStores([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[var(--bg-void)] flex items-center justify-center p-5">
+      <div className="w-full max-w-sm space-y-4">
+        <div className="text-center space-y-1">
+          <p className="font-mono text-[10px] tracking-[0.2em] text-[var(--gold)] uppercase">Admin Access</p>
+          <h1 className="font-display text-2xl text-[var(--text-primary)]">Select a Store</h1>
+          <p className="text-sm text-[var(--text-muted)]">You&apos;re logged in as admin. Choose a store to manage.</p>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-6 h-6 border-2 border-[var(--gold)] border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : stores.length === 0 ? (
+          <GlassCard className="p-6 text-center text-sm text-[var(--text-muted)]">
+            No stores found. Create one from the admin panel first.
+          </GlassCard>
+        ) : (
+          <div className="space-y-2">
+            {stores.map((s) => (
+              <button
+                key={s._id}
+                onClick={() => onPick(s._id)}
+                className="w-full text-left"
+              >
+                <GlassCard className="p-4 hover:border-[var(--gold)]/50 transition-colors">
+                  <p className="font-semibold text-[var(--text-primary)] text-sm">{s.name}</p>
+                  {s.address?.city && <p className="text-xs text-[var(--text-muted)] mt-0.5">{s.address.city}</p>}
+                </GlassCard>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AppLayout() {
   const user        = useAuthStore((s) => s.user);
   const fetchMe     = useAuthStore((s) => s.fetchMe);
+  const setStoreId  = useAuthStore((s) => s.setStoreId);
   const navigate    = useNavigate();
   const location    = useLocation();
   const queryClient = useQueryClient();
@@ -76,6 +131,11 @@ export default function AppLayout() {
         <div className="w-6 h-6 rounded-full border-2 border-[var(--gold)] border-t-transparent animate-spin" />
       </div>
     );
+  }
+
+  const isAdmin = user.role === Role.ADMIN || user.role === Role.SUPER_ADMIN;
+  if (isAdmin && !user.storeId) {
+    return <AdminStorePicker onPick={(id) => setStoreId(id)} />;
   }
 
   const isRider = user.role === Role.RIDER;

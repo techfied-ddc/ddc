@@ -65,9 +65,10 @@ export default function LoginPage() {
       const meRes = await api.get('/api/v1/users/me') as MeResponse;
       const u = meRes.data.user;
 
-      // Guard: only store/rider roles can access this app
-      if (u.role !== Role.STORE_OWNER && u.role !== Role.STORE_STAFF && u.role !== Role.RIDER) {
-        setError('This app is for store staff and riders only.');
+      // Guard: store/rider roles and admins (who get a store picker on the dashboard)
+      const storeAllowed = [Role.STORE_OWNER, Role.STORE_STAFF, Role.RIDER, Role.ADMIN, Role.SUPER_ADMIN];
+      if (!storeAllowed.includes(u.role)) {
+        setError('This app is for store staff, riders, and administrators only.');
         setLoading(false);
         return;
       }
