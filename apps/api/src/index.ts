@@ -93,5 +93,7 @@ const start = async () => {
 
 start().catch((err) => {
   logger.error({ err }, 'Failed to start server');
+  // Print raw so Railway surfaces the message even when JSON parsing is lossy
+  console.error('STARTUP ERROR:', err instanceof Error ? err.message : String(err));
   process.exit(1);
 });
