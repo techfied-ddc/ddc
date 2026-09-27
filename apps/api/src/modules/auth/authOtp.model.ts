@@ -11,7 +11,7 @@ export interface IAuthOtp extends Document {
 
 const authOtpSchema = new mongoose.Schema<IAuthOtp>(
   {
-    email:     { type: String, required: true, index: true },
+    email:     { type: String, required: true },
     otpHash:   { type: String, required: true },
     attempts:  { type: Number, default: 0 },
     expiresAt: { type: Date,   required: true },

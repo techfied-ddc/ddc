@@ -22,7 +22,7 @@ export interface ICoupon extends Document {
 
 const CouponSchema = new Schema<ICoupon>(
   {
-    code:             { type: String, required: true, unique: true, uppercase: true, trim: true },
+    code:             { type: String, required: true, uppercase: true, trim: true },
     type:             { type: String, enum: Object.values(CouponType), required: true },
     value:            { type: Number, required: true, min: 0 },
     minOrderPaise:    Number,
