@@ -2,6 +2,41 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './api.js';
 
+// ── User profile ──────────────────────────────────────────────────────────────
+
+export interface UserProfile {
+  _id:            string;
+  name:           string;
+  email?:         string;
+  phone?:         string;
+  avatar?:        string;
+  role:           string;
+  notifyByPush:   boolean;
+  notifyBySms:    boolean;
+  notifyByEmail:  boolean;
+  authMethods:    string[];
+  createdAt:      string;
+}
+
+export const useProfile = () =>
+  useQuery<UserProfile>({
+    queryKey: ['me'],
+    queryFn:  async () => {
+      const res = await api.get('/api/v1/users/me') as { data: { user: UserProfile } };
+      return res.data.user;
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+export const useUpdateProfile = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string; email?: string }) =>
+      api.patch('/api/v1/users/me', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  });
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CatalogService {

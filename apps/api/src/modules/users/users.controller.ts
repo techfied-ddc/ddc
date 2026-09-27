@@ -19,11 +19,11 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
 // PATCH /api/v1/users/me
 export const updateMe = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, avatar } = req.body;
+    const { name, email, phone, avatar } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.user!.sub,
-      { $set: { ...(name && { name }), ...(email && { email }), ...(avatar && { avatar }) } },
+      { $set: { ...(name && { name }), ...(email && { email }), ...(phone && { phone }), ...(avatar && { avatar }) } },
       { new: true, runValidators: true },
     ).select('-passwordHash -pushSubscriptions').lean();
 

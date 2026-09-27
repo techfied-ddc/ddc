@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Store } from './store.model.js';
+import { User } from '../users/user.model.js';
 import { AppError } from '../../lib/errors.js';
-import { DEFAULT_PAGE_SIZE, StoreStatus } from '@ddc/shared';
+import { DEFAULT_PAGE_SIZE, StoreStatus, Role, AuthMethod } from '@ddc/shared';
 import type { StoreListQuery } from '@ddc/shared';
 
 // ── Admin: list stores ────────────────────────────────────────────────────────
@@ -30,7 +31,43 @@ export const listStores = async (req: Request, res: Response, next: NextFunction
 
 export const createStore = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const store = await Store.create({ ...req.body, status: StoreStatus.APPROVED });
+    const { ownerUserId, ownerName, ownerPhone, ownerEmail, sla, ...storeFields } = req.body as {
+      ownerUserId?: string;
+      ownerName?: string;
+      ownerPhone?: string;
+      ownerEmail?: string;
+      sla?: { defaultTatHours?: number };
+      [key: string]: unknown;
+    };
+
+    let resolvedOwnerId: string;
+
+    if (ownerUserId) {
+      const existing = await User.findById(ownerUserId).lean();
+      if (!existing) return next(AppError.notFound('Owner user', ownerUserId));
+      resolvedOwnerId = ownerUserId;
+    } else {
+      // Auto-create a STORE_OWNER user so admin can onboard in one step
+      const newUser = await User.create({
+        name:        ownerName ?? 'Store Owner',
+        phone:       ownerPhone,
+        email:       ownerEmail,
+        role:        Role.STORE_OWNER,
+        authMethods: [AuthMethod.EMAIL_OTP],
+      });
+      resolvedOwnerId = String(newUser._id);
+    }
+
+    const store = await Store.create({
+      ...storeFields,
+      ownerUserId: resolvedOwnerId,
+      status:      StoreStatus.APPROVED,
+      ...(sla && { sla }),
+    });
+
+    // Link store back to the owner user
+    await User.findByIdAndUpdate(resolvedOwnerId, { storeId: store._id });
+
     res.status(201).json({ ok: true, data: { store } });
   } catch (err) { next(err); }
 };

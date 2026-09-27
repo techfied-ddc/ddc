@@ -49,7 +49,11 @@ export default function SupportPage() {
       ) : tickets.length === 0 ? (
         <Reveal delay={0.05}>
           <GlassCard className="p-8 text-center space-y-3">
-            <p className="text-4xl">💬</p>
+            <div className="flex justify-center">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinejoin="round" />
+              </svg>
+            </div>
             <p className="text-[var(--text-muted)] text-sm">No support tickets yet.</p>
             <p className="text-xs text-[var(--text-subtle)]">Have a question or issue? Create a ticket and we&apos;ll help you.</p>
           </GlassCard>

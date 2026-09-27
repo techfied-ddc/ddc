@@ -121,8 +121,11 @@ export default function StoresPage() {
       {showCreate && (
         <CreateStoreModal
           onClose={() => setShowCreate(false)}
-          onCreate={(body) => createStore.mutate(body, { onSuccess: () => setShowCreate(false) })}
+          onCreate={(body) => createStore.mutate(body, {
+            onSuccess: () => setShowCreate(false),
+          })}
           isPending={createStore.isPending}
+          apiError={createStore.error instanceof Error ? createStore.error.message : null}
         />
       )}
     </div>
@@ -278,20 +281,23 @@ function Info({ label, value }: { label: string; value: string }) {
 // ── Create store modal ────────────────────────────────────────────────────────
 
 function CreateStoreModal({
-  onClose, onCreate, isPending,
-}: { onClose: () => void; onCreate: (body: unknown) => void; isPending: boolean }) {
+  onClose, onCreate, isPending, apiError,
+}: { onClose: () => void; onCreate: (body: unknown) => void; isPending: boolean; apiError: string | null }) {
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', ownerName: '', ownerPhone: '',
+    name: '', phone: '', email: '', ownerName: '', ownerPhone: '', ownerEmail: '',
     addressLine1: '', city: '', state: '', pincode: '',
     commissionPercent: '15', taxPercent: '18', gstin: '',
     defaultTatHours: '48',
   });
+  const [error, setError] = useState('');
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    if (!form.ownerPhone) { setError('Owner phone is required.'); return; }
     onCreate({
       name:  form.name,
       phone: form.phone,
@@ -307,8 +313,9 @@ function CreateStoreModal({
       taxPercent:        Number(form.taxPercent),
       gstin:             form.gstin || undefined,
       sla: { defaultTatHours: Number(form.defaultTatHours) },
-      ownerName:  form.ownerName,
+      ownerName:  form.ownerName || undefined,
       ownerPhone: form.ownerPhone,
+      ownerEmail: form.ownerEmail || undefined,
     });
   };
 
@@ -336,8 +343,10 @@ function CreateStoreModal({
           </div>
 
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mt-3 mb-2">Owner Account</p>
-          <Input label="Owner Name *"  value={form.ownerName}  onChange={set('ownerName')} required />
-          <Input label="Owner Phone *" value={form.ownerPhone} onChange={set('ownerPhone')} required />
+          <p className="text-xs text-[var(--text-subtle)] -mt-1 mb-2">An owner login account will be created automatically. They can log in with OTP to their phone.</p>
+          <Input label="Owner Name"    value={form.ownerName}  onChange={set('ownerName')} />
+          <Input label="Owner Phone *" value={form.ownerPhone} onChange={set('ownerPhone')} required placeholder="+919876543210" />
+          <Input label="Owner Email"   value={form.ownerEmail} onChange={set('ownerEmail')} type="email" />
 
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-widest mt-3 mb-2">Settings</p>
           <div className="grid grid-cols-3 gap-3">
@@ -345,6 +354,8 @@ function CreateStoreModal({
             <Input label="Tax %"        value={form.taxPercent}        onChange={set('taxPercent')} type="number" />
             <Input label="TAT (hours)"  value={form.defaultTatHours}   onChange={set('defaultTatHours')} type="number" />
           </div>
+
+          {(error || apiError) && <p className="text-xs text-[var(--danger)] text-center">{error || apiError}</p>}
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] text-[var(--text-muted)] text-sm">Cancel</button>

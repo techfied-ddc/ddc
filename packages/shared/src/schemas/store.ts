@@ -4,9 +4,13 @@ import { zObjectId, zAddress, zPincode, zPercent, zTimeHHMM, zPaginationQuery } 
 
 // ── Store onboarding / profile ────────────────────────────────────────────────
 
-export const zCreateStoreBody = z.object({
+const zCreateStoreBase = z.object({
   name:        z.string().min(1).max(200),
-  ownerUserId: zObjectId,
+  // Either supply an existing ownerUserId OR provide ownerName + ownerPhone to auto-create the owner
+  ownerUserId: zObjectId.optional(),
+  ownerName:   z.string().min(1).max(100).optional(),
+  ownerPhone:  z.string().min(7).max(20).optional(),
+  ownerEmail:  z.string().email().optional(),
   address:     zAddress,
   phone:       z.string().min(7).max(20),
   email:       z.string().email().optional(),
@@ -14,9 +18,17 @@ export const zCreateStoreBody = z.object({
   gstin:       z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}$/, 'Invalid GSTIN').optional(),
   taxPercent:  zPercent.optional(),
   commissionPercent: zPercent.optional(),
+  sla: z.object({ defaultTatHours: z.number().int().positive().max(8760) }).optional(),
 });
 
-export const zUpdateStoreBody = zCreateStoreBody.partial().omit({ ownerUserId: true });
+export const zCreateStoreBody = zCreateStoreBase.refine(
+  (d) => d.ownerUserId || d.ownerPhone,
+  { message: 'Either ownerUserId or ownerPhone must be provided', path: ['ownerPhone'] },
+);
+
+export const zUpdateStoreBody = zCreateStoreBase
+  .partial()
+  .omit({ ownerUserId: true, ownerName: true, ownerPhone: true, ownerEmail: true });
 
 export const zUpdateStoreStatusBody = z.object({
   status: z.nativeEnum(StoreStatus),
