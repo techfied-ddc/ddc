@@ -64,7 +64,7 @@ const schema = z.object({
   // Web Push
   VAPID_PUBLIC_KEY:  z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
-  VAPID_SUBJECT:     z.string().email().default('techfied.desiredrycleaning@gmail.com'),
+  VAPID_SUBJECT:     z.string().default('mailto:techfied.desiredrycleaning@gmail.com'),
 
   // Sentry
   SENTRY_DSN: z.string().url().optional(),
