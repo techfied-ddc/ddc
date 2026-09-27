@@ -73,6 +73,41 @@ export function useConfirmPayment(orderId: string) {
   });
 }
 
+// ── User profile ──────────────────────────────────────────────────────────────
+
+export interface ProfileDoc {
+  _id:           string;
+  name:          string;
+  email?:        string;
+  phone?:        string;
+  role:          string;
+  vehicleNumber?: string;
+  createdAt:     string;
+}
+
+export function useMyProfile() {
+  return useQuery({
+    queryKey: ['my-profile'],
+    queryFn:  () => api.get('/api/v1/users/me').then(d<{ user: ProfileDoc }>),
+  });
+}
+
+export function useUpdateMyProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string; email?: string; phone?: string }) =>
+      api.patch('/api/v1/users/me', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['my-profile'] }),
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (body: { currentPassword?: string; newPassword: string }) =>
+      api.post('/api/v1/auth/password/change', body),
+  });
+}
+
 // ── Store: Riders ─────────────────────────────────────────────────────────────
 
 export function useStoreRiders() {
@@ -86,7 +121,10 @@ export function useStoreRiders() {
 export function useAddRider() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; phone: string }) => api.post('/api/v1/riders', body),
+    mutationFn: (body: {
+      name: string; phone: string;
+      email?: string; vehicleNumber?: string; password?: string;
+    }) => api.post('/api/v1/riders', body),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['store-riders'] }),
   });
 }
@@ -221,6 +259,8 @@ export interface RiderDoc {
   _id: string;
   name: string;
   phone: string;
+  email?: string;
+  vehicleNumber?: string;
   status: string;
   storeId?: string;
 }

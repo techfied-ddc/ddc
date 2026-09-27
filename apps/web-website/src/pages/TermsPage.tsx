@@ -5,7 +5,7 @@ import { useSeo } from '../lib/seo.js';
 const EFFECTIVE_DATE = '1 September 2026';
 const BRAND = 'Desire Premium Dry Cleaning';
 const EMAIL = 'techfied.desiredrycleaning@gmail.com';
-const PHONE = '+91 91186 78519';
+const PHONE = '+91 93158 22910';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (

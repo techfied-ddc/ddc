@@ -2,8 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate.js';
 import { authorize } from '../../middleware/authorize.js';
 import { validate } from '../../middleware/validate.js';
-import { Role } from '@ddc/shared';
-import { zUpdateProfileBody } from '@ddc/shared';
+import { Role, zUpdateProfileBody, zAdminSetPasswordBody } from '@ddc/shared';
 import { z } from 'zod';
 import * as ctrl from './users.controller.js';
 
@@ -37,4 +36,16 @@ usersRouter.patch('/:id/status',
   authorize(Role.ADMIN, Role.SUPER_ADMIN),
   validate(z.object({ status: z.string() })),
   ctrl.updateUserStatus,
+);
+
+usersRouter.patch('/:id/password',
+  authorize(Role.ADMIN, Role.SUPER_ADMIN),
+  validate(zAdminSetPasswordBody),
+  ctrl.adminSetUserPassword,
+);
+
+usersRouter.patch('/:id',
+  authorize(Role.ADMIN, Role.SUPER_ADMIN),
+  validate(zUpdateProfileBody),
+  ctrl.adminUpdateUser,
 );

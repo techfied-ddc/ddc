@@ -21,6 +21,7 @@ const STORE_TABS: TabItem[] = [
   { key: 'orders',    label: 'Orders',    icon: <PackageIcon /> },
   { key: 'riders',    label: 'Riders',    icon: <TruckIcon /> },
   { key: 'payouts',   label: 'Payouts',   icon: <CashIcon /> },
+  { key: 'profile',   label: 'Profile',   icon: <UserIcon /> },
 ];
 
 const RIDER_TABS: TabItem[] = [
@@ -29,13 +30,14 @@ const RIDER_TABS: TabItem[] = [
   { key: 'profile', label: 'Profile', icon: <UserIcon /> },
 ];
 
-const STORE_ROUTES: Record<string, string> = { dashboard: '/', orders: '/orders', riders: '/riders', payouts: '/payouts' };
+const STORE_ROUTES: Record<string, string> = { dashboard: '/', orders: '/orders', riders: '/riders', payouts: '/payouts', profile: '/profile' };
 const RIDER_ROUTES: Record<string, string> = { jobs: '/rider', history: '/rider/history', profile: '/rider/profile' };
 
 function storePathToTab(path: string): string {
   if (path.startsWith('/orders'))  return 'orders';
   if (path.startsWith('/riders'))  return 'riders';
   if (path.startsWith('/payouts')) return 'payouts';
+  if (path.startsWith('/profile')) return 'profile';
   return 'dashboard';
 }
 function riderPathToTab(path: string): string {

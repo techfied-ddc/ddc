@@ -11,6 +11,7 @@ export interface IUser extends Document {
   role:            Role;
   status:          UserStatus;
   storeId?:        mongoose.Types.ObjectId;
+  vehicleNumber?:  string;
   authMethods:     AuthMethod[];
   // Push notification subscriptions
   pushSubscriptions: Array<{
@@ -48,6 +49,7 @@ const userSchema = new mongoose.Schema<IUser>(
     role:          { type: String, enum: Object.values(Role), required: true },
     status:        { type: String, enum: Object.values(UserStatus), default: UserStatus.ACTIVE },
     storeId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Store', index: true },
+    vehicleNumber: { type: String, trim: true },
     authMethods:   [{ type: String, enum: Object.values(AuthMethod) }],
     pushSubscriptions: [pushSubSchema],
     notifyByPush:  { type: Boolean, default: true },

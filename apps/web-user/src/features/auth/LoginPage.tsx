@@ -9,22 +9,38 @@ import type { Role } from '@ddc/shared';
 
 const GOOGLE_CLIENT_ID = (import.meta.env['VITE_GOOGLE_CLIENT_ID'] as string | undefined) ?? '';
 
-interface GoogleAuthResponse { data: { accessToken: string; userId: string; isNew: boolean } }
+type LoginMode = 'otp' | 'password';
+
+interface AuthResponse { data: { accessToken: string; userId: string; isNew: boolean } }
 
 export default function LoginPage() {
-  const [email,   setEmail]   = useState('');
-  const [error,   setError]   = useState('');
-  const [loading, setLoading] = useState(false);
+  const [mode,     setMode]     = useState<LoginMode>('otp');
+  const [email,    setEmail]    = useState('');
+  const [password, setPassword] = useState('');
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
   const navigate     = useNavigate();
   const setAuth      = useAuthStore((s) => s.setAuth);
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  // ── Google Sign-In ────────────────────────────────────────────────────────
+  const finishLogin = (accessToken: string) => {
+    setAccessToken(accessToken);
+    api.get('/api/v1/users/me').then((meRes) => {
+      const u = (meRes as { data: { user: { _id: string; role: Role; storeId?: string } } }).data.user;
+      setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
+      navigate('/', { replace: true });
+    }).catch(() => {
+      setAccessToken(null);
+      setError('Login failed. Please try again.');
+      setLoading(false);
+    });
+  };
+
+  // ── Google Sign-In ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID || !googleBtnRef.current) return;
-
     let mounted = true;
 
     async function handleGoogleCredential(response: { credential: string }) {
@@ -32,31 +48,24 @@ export default function LoginPage() {
       setError('');
       setLoading(true);
       try {
-        const res = await api.post('/api/v1/auth/google', { idToken: response.credential }) as GoogleAuthResponse;
-        const { accessToken } = res.data;
-        // Set token before /me so the request carries Authorization header
-        setAccessToken(accessToken);
-        const meRes = await api.get('/api/v1/users/me') as { data: { user: { _id: string; role: Role; storeId?: string } } };
-        const u = meRes.data.user;
-        setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
-        navigate('/', { replace: true });
+        const res = await api.post('/api/v1/auth/google', { idToken: response.credential }) as AuthResponse;
+        finishLogin(res.data.accessToken);
       } catch (err) {
         setError(err instanceof ApiError ? err.message : 'Google sign-in failed. Please try again.');
-      } finally {
         if (mounted) setLoading(false);
       }
     }
 
     initGoogleSignIn(GOOGLE_CLIENT_ID, handleGoogleCredential, googleBtnRef.current)
-      .catch(() => { /* GIS failed to load — button stays hidden */ });
+      .catch(() => undefined);
 
     return () => { mounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Email OTP ─────────────────────────────────────────────────────────────
-  const handleSend = async () => {
-    if (!isValid || loading) return;
+  // ── Email OTP ──────────────────────────────────────────────────────────────
+  const handleSendOtp = async () => {
+    if (!isValidEmail || loading) return;
     setError('');
     setLoading(true);
     try {
@@ -69,93 +78,173 @@ export default function LoginPage() {
     }
   };
 
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSend();
+  // ── Password login ─────────────────────────────────────────────────────────
+  const handlePasswordLogin = async () => {
+    if (!isValidEmail || !password || loading) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/api/v1/auth/email/login', { email: email.trim(), password }) as AuthResponse;
+      finishLogin(res.data.accessToken);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Incorrect email or password.');
+      setLoading(false);
+    }
+  };
+
+  const switchMode = (m: LoginMode) => {
+    setMode(m);
+    setError('');
+    setPassword('');
   };
 
   return (
-    <GlassCard className="p-6 space-y-6">
-      <div>
-        <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">
-          Sign in
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          Enter your email address to receive a one-time code.
-        </p>
-      </div>
-
-      {/* Email input */}
-      <div className="space-y-2">
-        <label htmlFor="email-input" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
-          Email address
-        </label>
-        <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
-          <input
-            id="email-input"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              if (error) setError('');
+    <div className="space-y-4">
+      {/* Mode toggle */}
+      <div className="flex rounded-xl overflow-hidden border border-[var(--border)]">
+        {(['otp', 'password'] as LoginMode[]).map((m) => (
+          <button
+            key={m}
+            onClick={() => switchMode(m)}
+            className="flex-1 py-2.5 text-sm font-medium transition-colors"
+            style={{
+              background: mode === m ? 'rgba(212,175,55,0.15)' : 'transparent',
+              color:      mode === m ? 'var(--gold)' : 'var(--text-muted)',
+              borderRight: m === 'otp' ? '1px solid var(--border)' : 'none',
             }}
-            onKeyDown={handleKey}
-            placeholder="you@example.com"
-            className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
-            autoFocus
-            autoComplete="email"
-          />
-        </div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.p
-              key="error"
-              className="text-sm text-[var(--danger)]"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              {error}
-            </motion.p>
-          )}
-        </AnimatePresence>
+          >
+            {m === 'otp' ? 'Email OTP' : 'Password'}
+          </button>
+        ))}
       </div>
 
-      <Button
-        className="w-full"
-        size="lg"
-        loading={loading}
-        disabled={!isValid}
-        onClick={handleSend}
-      >
-        Send OTP
-      </Button>
+      <GlassCard className="p-6 space-y-6">
+        <AnimatePresence mode="wait">
 
-      {/* Google Sign-In — only shown when VITE_GOOGLE_CLIENT_ID is configured */}
-      {GOOGLE_CLIENT_ID && (
-        <>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-[var(--border)]" />
-            <span className="text-xs text-[var(--text-subtle)]">or</span>
-            <div className="flex-1 h-px bg-[var(--border)]" />
-          </div>
+          {/* ── OTP mode ── */}
+          {mode === 'otp' && (
+            <motion.div key="otp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+              <div>
+                <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in with OTP</h2>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Enter your email to receive a one-time code.</p>
+              </div>
 
-          {/* GIS renders the official Google button into this div */}
-          <div ref={googleBtnRef} className="w-full overflow-hidden rounded-xl" aria-label="Sign in with Google" />
-        </>
-      )}
+              <div className="space-y-2">
+                <label htmlFor="email-otp" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide">
+                  Email address
+                </label>
+                <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
+                  <input
+                    id="email-otp"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
+                    placeholder="you@example.com"
+                    className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
+                    autoFocus
+                    autoComplete="email"
+                  />
+                </div>
+                <AnimatePresence>
+                  {error && (
+                    <motion.p key="err" className="text-sm text-[var(--danger)]" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                      {error}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
 
-      <p className="text-center text-xs text-[var(--text-subtle)]">
-        By continuing you agree to our{' '}
-        <a href="https://desiredrycleaning.in/terms" className="text-[var(--gold)] underline-offset-2 hover:underline">
-          Terms
-        </a>{' '}
-        &{' '}
-        <a href="https://desiredrycleaning.in/privacy" className="text-[var(--gold)] underline-offset-2 hover:underline">
-          Privacy Policy
-        </a>
-        .
-      </p>
-    </GlassCard>
+              <Button className="w-full" size="lg" loading={loading} disabled={!isValidEmail} onClick={handleSendOtp}>
+                Send OTP
+              </Button>
+            </motion.div>
+          )}
+
+          {/* ── Password mode ── */}
+          {mode === 'password' && (
+            <motion.div key="password" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+              <div>
+                <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in</h2>
+                <p className="text-sm text-[var(--text-muted)] mt-1">Use your email and password.</p>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="email-pw" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Email</label>
+                  <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
+                    <input
+                      id="email-pw"
+                      type="email"
+                      value={email}
+                      onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                      onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+                      placeholder="you@example.com"
+                      className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
+                      autoFocus
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="pw-input" className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Password</label>
+                  <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
+                    <input
+                      id="pw-input"
+                      type="password"
+                      value={password}
+                      onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                      onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+                      placeholder="••••••••"
+                      className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <AnimatePresence>
+                {error && (
+                  <motion.p key="err" className="text-sm text-[var(--danger)]" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                    {error}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+
+              <Button className="w-full" size="lg" loading={loading} disabled={!isValidEmail || !password} onClick={handlePasswordLogin}>
+                Sign In
+              </Button>
+
+              <p className="text-center text-xs text-[var(--text-subtle)]">
+                No password?{' '}
+                <button onClick={() => switchMode('otp')} className="text-[var(--gold)] hover:underline underline-offset-2">
+                  Use Email OTP instead
+                </button>
+              </p>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+
+        {/* Google Sign-In */}
+        {GOOGLE_CLIENT_ID && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[var(--border)]" />
+              <span className="text-xs text-[var(--text-subtle)]">or</span>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+            </div>
+            <div ref={googleBtnRef} className="w-full overflow-hidden rounded-xl" aria-label="Sign in with Google" />
+          </>
+        )}
+
+        <p className="text-center text-xs text-[var(--text-subtle)]">
+          By continuing you agree to our{' '}
+          <a href="https://desiredrycleaning.in/terms" className="text-[var(--gold)] underline-offset-2 hover:underline">Terms</a>
+          {' '}&amp;{' '}
+          <a href="https://desiredrycleaning.in/privacy" className="text-[var(--gold)] underline-offset-2 hover:underline">Privacy Policy</a>.
+        </p>
+      </GlassCard>
+    </div>
   );
 }

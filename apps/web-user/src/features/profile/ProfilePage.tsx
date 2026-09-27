@@ -136,6 +136,76 @@ function EditModal({
   );
 }
 
+// ── Change password modal ─────────────────────────────────────────────────────
+
+function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw,     setNewPw]     = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [error,     setError]     = useState('');
+  const [success,   setSuccess]   = useState(false);
+  const [loading,   setLoading]   = useState(false);
+
+  const handleSave = async () => {
+    setError('');
+    if (newPw.length < 8) { setError('New password must be at least 8 characters.'); return; }
+    if (newPw !== confirmPw) { setError('Passwords do not match.'); return; }
+    setLoading(true);
+    try {
+      await api.post('/api/v1/auth/password/change', {
+        ...(currentPw ? { currentPassword: currentPw } : {}),
+        newPassword: newPw,
+      });
+      setSuccess(true);
+      setTimeout(onClose, 1500);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Failed to update password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)', padding: '0 16px 16px' }}>
+      <motion.div style={{ width: '100%', maxWidth: 480 }} initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} transition={{ duration: 0.25, ease: 'easeOut' }}>
+        <GlassCard className="p-6 space-y-5">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+              {success ? 'Password updated!' : 'Set / Change Password'}
+            </h2>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}>×</button>
+          </div>
+          {success ? (
+            <p style={{ fontSize: 14, color: 'var(--gold)', textAlign: 'center' }}>✓ Your password has been saved.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Current Password</label>
+                <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="Leave empty if setting for the first time" style={inputStyle} autoComplete="current-password" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>New Password</label>
+                <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder="At least 8 characters" style={inputStyle} autoComplete="new-password" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Confirm New Password</label>
+                <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder="Repeat new password" style={inputStyle} autoComplete="new-password" />
+              </div>
+              {error && <p style={{ fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>{error}</p>}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={onClose} style={secondaryBtn}>Cancel</button>
+                <Button className="flex-1" size="md" loading={loading} disabled={!newPw || !confirmPw} onClick={handleSave}>
+                  Save Password
+                </Button>
+              </div>
+            </div>
+          )}
+        </GlassCard>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Toggle switch ─────────────────────────────────────────────────────────────
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
@@ -181,10 +251,11 @@ export default function ProfilePage() {
   const navigate     = useNavigate();
   const { data: profile, isLoading } = useProfile();
 
-  const [loggingOut, setLoggingOut]   = useState(false);
-  const [showEdit, setShowEdit]       = useState(false);
-  const [notifySms, setNotifySms]     = useState<boolean | null>(null);
-  const [notifyEmail, setNotifyEmail] = useState<boolean | null>(null);
+  const [loggingOut,    setLoggingOut]    = useState(false);
+  const [showEdit,      setShowEdit]      = useState(false);
+  const [showPassword,  setShowPassword]  = useState(false);
+  const [notifySms,     setNotifySms]     = useState<boolean | null>(null);
+  const [notifyEmail,   setNotifyEmail]   = useState<boolean | null>(null);
 
   const resolvedNotifySms   = notifySms   ?? profile?.notifyBySms   ?? true;
   const resolvedNotifyEmail = notifyEmail ?? profile?.notifyByEmail ?? false;
@@ -307,6 +378,37 @@ export default function ProfilePage() {
           </GlassCard>
         </Reveal>
 
+        {/* ── Security ── */}
+        <Reveal delay={0.11}>
+          <button
+            onClick={() => setShowPassword(true)}
+            style={{
+              width: '100%',
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 16,
+              padding: '16px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              cursor: 'pointer',
+              minHeight: 56,
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <LockIcon />
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Password</p>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>Set or change your login password</p>
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M6 4l4 4-4 4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </Reveal>
+
         {/* ── Support shortcut ── */}
         <Reveal delay={0.13}>
           <button
@@ -361,12 +463,24 @@ export default function ProfilePage() {
             onClose={() => setShowEdit(false)}
           />
         )}
+        {showPassword && (
+          <ChangePasswordModal onClose={() => setShowPassword(false)} />
+        )}
       </AnimatePresence>
     </div>
   );
 }
 
-// ── Support icon SVG ──────────────────────────────────────────────────────────
+// ── Icon SVGs ─────────────────────────────────────────────────────────────────
+function LockIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3" y="11" width="18" height="11" rx="2" stroke="var(--gold)" strokeWidth="1.5" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="var(--gold)" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function SupportIcon() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">

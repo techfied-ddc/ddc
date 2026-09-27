@@ -292,3 +292,39 @@ export function useAdminUpdateTicket(id: string) {
     },
   });
 }
+
+// ── Admin: user management ────────────────────────────────────────────────────
+
+export interface AdminUserDoc {
+  _id:           string;
+  name:          string;
+  email?:        string;
+  phone?:        string;
+  role:          string;
+  status:        string;
+  storeId?:      string;
+  createdAt:     string;
+}
+
+export function useAdminUser(id: string) {
+  return useQuery({
+    queryKey: ['admin-user', id],
+    queryFn:  () => api.get(`/api/v1/users/${id}`).then(d<{ user: AdminUserDoc }>),
+    enabled:  !!id,
+  });
+}
+
+export function useAdminSetUserPassword(userId: string) {
+  return useMutation({
+    mutationFn: (password: string) => api.patch(`/api/v1/users/${userId}/password`, { password }),
+  });
+}
+
+export function useAdminUpdateUser(userId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { name?: string; email?: string; phone?: string }) =>
+      api.patch(`/api/v1/users/${userId}`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-user', userId] }),
+  });
+}

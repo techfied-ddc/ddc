@@ -54,8 +54,14 @@ export const zUpdateProfileBody = z.object({
 // ── Password change ───────────────────────────────────────────────────────────
 
 export const zChangePasswordBody = z.object({
-  currentPassword: z.string().min(1),
+  currentPassword: z.string().optional(),
   newPassword:     z.string().min(8).max(128),
+});
+
+// ── Admin: set user password ──────────────────────────────────────────────────
+
+export const zAdminSetPasswordBody = z.object({
+  password: z.string().min(8).max(128),
 });
 
 // ── Admin: create user ────────────────────────────────────────────────────────
@@ -81,4 +87,5 @@ export type EmailLoginBody     = z.infer<typeof zEmailLoginBody>;
 export type EmailRegisterBody  = z.infer<typeof zEmailRegisterBody>;
 export type UpdateProfileBody  = z.infer<typeof zUpdateProfileBody>;
 export type ChangePasswordBody = z.infer<typeof zChangePasswordBody>;
-export type AdminCreateUserBody = z.infer<typeof zAdminCreateUserBody>;
+export type AdminCreateUserBody  = z.infer<typeof zAdminCreateUserBody>;
+export type AdminSetPasswordBody = z.infer<typeof zAdminSetPasswordBody>;

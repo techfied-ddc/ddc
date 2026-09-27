@@ -19,6 +19,7 @@ const zCreateStoreBase = z.object({
   taxPercent:  zPercent.optional(),
   commissionPercent: zPercent.optional(),
   sla: z.object({ defaultTatHours: z.number().int().positive().max(8760) }).optional(),
+  serviceArea: z.object({ pincodes: z.array(zPincode).max(500) }).optional(),
 });
 
 export const zCreateStoreBody = zCreateStoreBase.refine(

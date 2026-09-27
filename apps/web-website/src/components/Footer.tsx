@@ -45,8 +45,8 @@ export default function Footer() {
             Professional dry cleaning delivered to your door. Pickup &amp; delivery across Greater Noida West.
           </p>
           <address className="not-italic flex flex-col gap-2.5 text-sm text-silver">
-            <a href="tel:+919118678519" className="flex items-center gap-2 hover:text-gold transition-colors duration-200">
-              <PhoneIcon /> +91 91186 78519
+            <a href="tel:+919315822910" className="flex items-center gap-2 hover:text-gold transition-colors duration-200">
+              <PhoneIcon /> +91 93158 22910
             </a>
             <a href="mailto:techfied.desiredrycleaning@gmail.com" className="flex items-center gap-2 hover:text-gold transition-colors duration-200 break-all">
               <MailIcon /> techfied.desiredrycleaning@gmail.com

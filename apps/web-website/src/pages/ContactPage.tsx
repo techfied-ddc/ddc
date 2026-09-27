@@ -16,8 +16,8 @@ const INFO_CARDS = [
       </svg>
     ),
     label: 'Phone',
-    value: '+91 91186 78519',
-    href: 'tel:+919118678519',
+    value: '+91 93158 22910',
+    href: 'tel:+919315822910',
     cta: 'Call now',
   },
   {

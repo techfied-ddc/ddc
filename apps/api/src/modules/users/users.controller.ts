@@ -1,7 +1,8 @@
 import type { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
 import { User } from './user.model.js';
 import { AppError } from '../../lib/errors.js';
-import { DEFAULT_PAGE_SIZE } from '@ddc/shared';
+import { DEFAULT_PAGE_SIZE, AuthMethod } from '@ddc/shared';
 
 // GET /api/v1/users/me
 export const getMe = async (req: Request, res: Response, next: NextFunction) => {
@@ -84,6 +85,35 @@ export const updateUserStatus = async (req: Request, res: Response, next: NextFu
 
     if (!user) return next(AppError.notFound('User', req.params['id'] as string));
     res.json({ ok: true, data: { user } });
+  } catch (err) { next(err); }
+};
+
+// PATCH /api/v1/users/:id — admin only
+export const adminUpdateUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, email, phone } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.params['id'],
+      { $set: { ...(name && { name }), ...(email && { email: email.toLowerCase() }), ...(phone && { phone }) } },
+      { new: true, runValidators: true },
+    ).select('-passwordHash -pushSubscriptions').lean();
+    if (!user) return next(AppError.notFound('User', req.params['id'] as string));
+    res.json({ ok: true, data: { user } });
+  } catch (err) { next(err); }
+};
+
+// PATCH /api/v1/users/:id/password — admin only
+export const adminSetUserPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { password } = req.body as { password: string };
+    const user = await User.findById(req.params['id']);
+    if (!user) return next(AppError.notFound('User', req.params['id'] as string));
+    user.passwordHash = await bcrypt.hash(password, 12);
+    if (!user.authMethods.includes(AuthMethod.PASSWORD)) {
+      user.authMethods.push(AuthMethod.PASSWORD);
+    }
+    await user.save();
+    res.json({ ok: true, data: { message: 'Password updated.' } });
   } catch (err) { next(err); }
 };
 

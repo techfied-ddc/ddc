@@ -20,6 +20,7 @@ const StoreOrderDetailPage  = lazy(() => import('./features/orders/StoreOrderDet
 const RidersPage            = lazy(() => import('./features/riders/RidersPage.js'));
 const RiderHome             = lazy(() => import('./features/rider/RiderHome.js'));
 const StorePayoutsPage      = lazy(() => import('./features/payouts/StorePayoutsPage.js'));
+const StoreProfilePage      = lazy(() => import('./features/store/StoreProfilePage.js'));
 
 const Loader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[var(--bg-void)]">
@@ -40,7 +41,8 @@ const router = createBrowserRouter([
       { path: '/riders',        element: w(<RidersPage />) },
       { path: '/rider',         element: w(<RiderHome />) },
       { path: '/rider/history', element: w(<RiderHome />) },
-      { path: '/rider/profile', element: w(<RiderHome />) },
+      { path: '/rider/profile', element: w(<StoreProfilePage />) },
+      { path: '/profile',       element: w(<StoreProfilePage />) },
       { path: '/payouts',       element: w(<StorePayoutsPage />) },
       { path: '*',              element: <Navigate to="/" replace /> },
     ],

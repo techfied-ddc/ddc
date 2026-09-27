@@ -167,13 +167,14 @@ export const registerWithEmail = async (params: {
 
 export const changePassword = async (
   userId: string,
-  currentPassword: string,
+  currentPassword: string | undefined,
   newPassword: string,
 ): Promise<void> => {
   const user = await User.findById(userId);
   if (!user) throw AppError.notFound('User', userId);
 
   if (user.passwordHash) {
+    if (!currentPassword) throw AppError.unauthorized('Current password is required to change your password.');
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) throw AppError.unauthorized('Current password is incorrect.');
   }
