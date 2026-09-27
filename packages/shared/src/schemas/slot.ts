@@ -11,7 +11,7 @@ export const zSlotAvailabilityQuery = z.object({
 export const zSlotCheckBody = z.object({
   storeId:  zObjectId,
   date:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-  windowId: zObjectId,
+  windowId: z.string().min(1, 'windowId is required'),
 });
 
 export type SlotAvailabilityQuery = z.infer<typeof zSlotAvailabilityQuery>;

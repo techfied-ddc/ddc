@@ -15,7 +15,7 @@ interface OrderLineItem {
 
 interface PickupSlotRef {
   date:        string;       // YYYY-MM-DD
-  windowId:    Types.ObjectId;
+  windowId:    string;       // slot window identifier (ObjectId hex or fallback string)
   windowLabel: string;       // populated after routing
   start:       string;       // HH:MM, populated after routing
   end:         string;
@@ -127,7 +127,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     pickupSlot: {
       date:        { type: String, required: true },
-      windowId:    { type: Schema.Types.ObjectId, required: true },
+      windowId:    { type: String, required: true },
       windowLabel: { type: String, default: '' },
       start:       { type: String, default: '' },
       end:         { type: String, default: '' },

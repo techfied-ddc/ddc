@@ -132,6 +132,7 @@ const run = async () => {
         horizonDays:     7,
         windows: [
           {
+            _id:        new mongoose.Types.ObjectId(),
             label:      'Early Morning (7–10 AM)',
             start:      '07:00',
             end:        '10:00',
@@ -140,6 +141,7 @@ const run = async () => {
             enabled:    true,
           },
           {
+            _id:        new mongoose.Types.ObjectId(),
             label:      'Midday (11 AM–2 PM)',
             start:      '11:00',
             end:        '14:00',
@@ -148,6 +150,7 @@ const run = async () => {
             enabled:    true,
           },
           {
+            _id:        new mongoose.Types.ObjectId(),
             label:      'Afternoon (3–6 PM)',
             start:      '15:00',
             end:        '18:00',
@@ -156,6 +159,7 @@ const run = async () => {
             enabled:    true,
           },
           {
+            _id:        new mongoose.Types.ObjectId(),
             label:      'Evening (6–9 PM)',
             start:      '18:00',
             end:        '21:00',

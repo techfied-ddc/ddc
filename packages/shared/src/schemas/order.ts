@@ -15,7 +15,7 @@ export const zPlaceOrderBody = z.object({
   address:     zAddress,
   pickupSlot:  z.object({
     date:     z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD'),
-    windowId: zObjectId,
+    windowId: z.string().min(1, 'windowId is required'),
   }),
   paymentMode: z.nativeEnum(PaymentMode),
   couponCode:  z.string().max(50).optional(),
