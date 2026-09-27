@@ -39,7 +39,7 @@ const doFetch = async (path: string, opts: ApiOptions = {}): Promise<unknown> =>
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  if (res.status === 401 && _accessToken && path !== '/api/v1/auth/refresh') {
+  if (res.status === 401 && path !== '/api/v1/auth/refresh') {
     if (!refreshPromise) {
       refreshPromise = doFetch('/api/v1/auth/refresh', { method: 'POST' })
         .then((d) => (d as { data: { accessToken: string } }).data.accessToken)

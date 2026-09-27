@@ -41,12 +41,12 @@ export default function AppLayout() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!user) {
-      fetchMe().then(() => {
-        if (!useAuthStore.getState().user) navigate('/login', { replace: true });
-      });
-    }
-  }, [user, fetchMe, navigate]);
+    // Always run on mount: restores access token via refresh cookie and refreshes user data.
+    fetchMe().then(() => {
+      if (!useAuthStore.getState().user) navigate('/login', { replace: true });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Request push notification permission once user is known
   useEffect(() => {

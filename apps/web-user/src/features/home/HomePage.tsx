@@ -113,15 +113,22 @@ function QuickAction({
 
 export default function HomePage() {
   const navigate    = useNavigate();
-  const user        = useAuthStore((s) => s.user);
+  useAuthStore((s) => s.user); // keep subscription for re-render on auth change
   const cartCount   = useCartStore((s) => s.itemCount());
   const cartTotal   = useCartStore((s) => s.totalPaise());
   const storeIdCart = useCartStore((s) => s.storeId);
 
-  const [pincode, setPincode]   = useState('');
+  const [pincode, setPincode]   = useState<string>(() => {
+    try { return localStorage.getItem('ddc-pincode') ?? ''; } catch { return ''; }
+  });
   const [routing, setRouting]   = useState(false);
   const [routeErr, setRouteErr] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+
+  // Persist pincode so users don't have to re-enter on every visit
+  React.useEffect(() => {
+    try { localStorage.setItem('ddc-pincode', pincode); } catch { /* ignore */ }
+  }, [pincode]);
 
   const { data: ordersData } = useMyOrders({ page: 1 });
   const { data: profile }    = useProfile();
@@ -183,23 +190,51 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ minHeight: '100%', background: 'var(--bg-void)', padding: '20px 16px', paddingBottom: 88 }}>
+    <div style={{ minHeight: '100%', background: 'var(--bg-void)', paddingBottom: 88 }}>
 
-      {/* ── Greeting ── */}
+      {/* ── Hero banner ── */}
       <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        style={{ marginBottom: 24 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        style={{
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(212,175,55,0.04) 60%, transparent 100%)',
+          borderBottom: '1px solid rgba(212,175,55,0.15)',
+          padding: '28px 20px 24px',
+          marginBottom: 0,
+        }}
       >
-        <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--gold)', marginBottom: 4, letterSpacing: '0.04em' }}>
+        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--gold)', marginBottom: 6, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
           {greeting}
         </p>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, lineHeight: 1.2 }}>
-          {firstName ? `Welcome back, ${firstName}` : 'Premium dry cleaning'}
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6, lineHeight: 1.15 }}>
+          {firstName ? `Welcome back, ${firstName}` : 'Premium Dry Cleaning'}
         </h1>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Fresh clothes, at your door.</p>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 16 }}>Fresh clothes, delivered to your door.</p>
+
+        {/* Trust stats row */}
+        <div style={{ display: 'flex', gap: 16, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+          {[
+            { icon: '⚡', label: '24–48h', sub: 'Turnaround' },
+            { icon: '🚚', label: 'Free', sub: 'Pickup & Delivery' },
+            { icon: '✨', label: 'Premium', sub: 'Cleaning' },
+            { icon: '🛡️', label: 'Insured', sub: 'Garments' },
+          ].map((s) => (
+            <div key={s.label} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(212,175,55,0.15)',
+              borderRadius: 12, padding: '8px 12px' }}>
+              <span style={{ fontSize: 16 }}>{s.icon}</span>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)', lineHeight: 1.2 }}>{s.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.2 }}>{s.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </motion.div>
+
+      {/* Main content padding */}
+      <div style={{ padding: '20px 16px 0' }}>
 
       {/* ── Cart continue bar ── */}
       {cartCount > 0 && storeIdCart && (
@@ -379,13 +414,16 @@ export default function HomePage() {
                   background: 'var(--glass-bg)',
                   border: '1px solid var(--glass-border)',
                   borderRadius: 14,
-                  padding: '12px 14px',
+                  padding: '14px 16px',
                   cursor: 'pointer',
+                  transition: 'border-color 0.15s',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{o.orderRef}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: statusColor(o.status) }}>{statusLabel(o.status)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: statusColor(o.status),
+                    background: `${statusColor(o.status)}18`, border: `1px solid ${statusColor(o.status)}40`,
+                    borderRadius: 20, padding: '2px 8px' }}>{statusLabel(o.status)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatDate(o.createdAt)}</span>
@@ -396,6 +434,56 @@ export default function HomePage() {
           </div>
         </motion.div>
       )}
+
+      {/* ── Services preview ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.28 }}
+        style={{ marginTop: 28 }}
+      >
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.03) 100%)',
+          border: '1px solid rgba(212,175,55,0.2)',
+          borderRadius: 20,
+          padding: '20px 18px',
+        }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
+            What we clean
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Expert care for every garment</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              { label: 'Shirts & Kurtas', icon: '👔' },
+              { label: 'Sarees & Lehengas', icon: '🥻' },
+              { label: 'Suits & Blazers', icon: '🧥' },
+              { label: 'Bed Linen', icon: '🛏️' },
+            ].map((s) => (
+              <div key={s.label} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: 12, padding: '10px 12px',
+              }}>
+                <span style={{ fontSize: 20 }}>{s.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>{s.label}</span>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => { if (pincode.length === 6) void handleRoute(); else setRouteErr('Enter your pincode above to browse services.'); }}
+            style={{
+              marginTop: 14, width: '100%', padding: '12px 0',
+              background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)',
+              borderRadius: 12, color: 'var(--gold)', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            Browse all services →
+          </button>
+        </div>
+      </motion.div>
+
+      </div>{/* end main content padding */}
     </div>
   );
 }

@@ -26,12 +26,13 @@ export default function AdminLayout() {
   const [loggingOut, setLoggingOut]   = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      fetchMe().then(() => {
-        if (!useAuthStore.getState().user) navigate('/login', { replace: true });
-      });
-    }
-  }, [user, fetchMe, navigate]);
+    // Always run on mount: restores access token from refresh cookie and refreshes user data.
+    // Without this, page refreshes lose the in-memory token and all API calls fail silently.
+    fetchMe().then(() => {
+      if (!useAuthStore.getState().user) navigate('/login', { replace: true });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogout = async () => {
     setLoggingOut(true);

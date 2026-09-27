@@ -23,6 +23,7 @@ interface TicketSummary {
 export default function SupportPage() {
   const navigate       = useNavigate();
   const [showNew, setShowNew] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const { data, isLoading, refetch } = useMyTickets();
   const createTicket   = useCreateTicket();
 
@@ -88,11 +89,16 @@ export default function SupportPage() {
 
       {showNew && (
         <NewTicketModal
-          onClose={() => setShowNew(false)}
-          onCreate={(body) => createTicket.mutate(body, {
-            onSuccess: () => { setShowNew(false); void refetch(); },
-          })}
+          onClose={() => { setShowNew(false); setCreateError(null); }}
+          onCreate={(body) => {
+            setCreateError(null);
+            createTicket.mutate(body, {
+              onSuccess: () => { setShowNew(false); setCreateError(null); void refetch(); },
+              onError:   (e) => setCreateError(e instanceof Error ? e.message : 'Failed to submit ticket. Please try again.'),
+            });
+          }}
           isPending={createTicket.isPending}
+          apiError={createError}
         />
       )}
     </div>
@@ -100,11 +106,12 @@ export default function SupportPage() {
 }
 
 function NewTicketModal({
-  onClose, onCreate, isPending,
+  onClose, onCreate, isPending, apiError,
 }: {
   onClose:   () => void;
   onCreate:  (body: { subject: string; message: string }) => void;
   isPending: boolean;
+  apiError?: string | null;
 }) {
   const [subject, setSubject]   = useState('');
   const [message, setMessage]   = useState('');
@@ -148,7 +155,9 @@ function NewTicketModal({
             </div>
           </div>
 
-          {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
+          {(error || apiError) && (
+            <p className="text-xs text-[var(--danger)]">{error || apiError}</p>
+          )}
 
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[var(--glass-border)] text-[var(--text-muted)] text-sm">

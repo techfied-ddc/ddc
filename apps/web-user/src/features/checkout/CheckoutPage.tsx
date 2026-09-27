@@ -18,6 +18,8 @@ interface Address {
 
 const INDIA_STATES = ['Delhi','Uttar Pradesh','Maharashtra','Karnataka','Tamil Nadu','West Bengal','Rajasthan','Gujarat','Haryana','Punjab'];
 
+const spinStyle = `@keyframes spin { to { transform: rotate(360deg); } }`;
+
 export default function CheckoutPage() {
   const navigate   = useNavigate();
   const cart       = useCartStore();
@@ -33,6 +35,7 @@ export default function CheckoutPage() {
   const [couponResult, setCouponResult] = useState<{ valid: boolean; discount?: number; reason?: string } | null>(null);
   const [step, setStep]           = useState<'address' | 'slot' | 'payment' | 'confirm'>('address');
   const [error, setError]         = useState<string | null>(null);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -52,18 +55,22 @@ export default function CheckoutPage() {
   }
 
   const fetchSlots = async (storeId: string, date: string) => {
+    setLoadingSlots(true);
     try {
       const res = await api.get(`/api/v1/stores/${storeId}/slots?date=${date}`) as { data: { slots: SlotWindow[] } };
       setSlots(res.data.slots);
     } catch {
       setSlots([]);
+    } finally {
+      setLoadingSlots(false);
     }
   };
 
   const handleDateChange = (date: string) => {
     setPickupDate(date);
     setWindowId('');
-    if (cart.storeId && date) fetchSlots(cart.storeId, date);
+    setSlots([]);
+    if (cart.storeId && date) void fetchSlots(cart.storeId, date);
   };
 
   const handleCouponApply = async () => {
@@ -105,6 +112,7 @@ export default function CheckoutPage() {
 
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg-void)', paddingBottom: 32 }}>
+      <style>{spinStyle}</style>
       <div style={{ padding: '20px 16px 0', display: 'flex', alignItems: 'center', gap: 12 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20, padding: 0 }}>←</button>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text-primary)' }}>Checkout</h1>
@@ -153,19 +161,45 @@ export default function CheckoutPage() {
         {/* ── Step 2: Pickup slot ── */}
         {step === 'slot' && (
           <Card title="Choose Pickup Slot">
+            {!cart.storeId && (
+              <p style={{ color: '#F59E0B', fontSize: 13, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '10px 14px' }}>
+                Store not found. Please go back to Home and enter your pincode again.
+              </p>
+            )}
             <Field label="Pickup Date">
               <input type="date" style={inputStyle} value={pickupDate} min={minDate} onChange={(e) => handleDateChange(e.target.value)} />
             </Field>
             {pickupDate && (
               <Field label="Time Slot">
-                {slots.length === 0
-                  ? <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No slots available for this date.</p>
+                {loadingSlots
+                  ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
+                      <div style={{ width: 16, height: 16, border: '2px solid var(--gold)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                      Loading available slots…
+                    </div>
+                  )
+                  : slots.length === 0
+                  ? (
+                    <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '10px 14px' }}>
+                      <p style={{ color: '#F87171', fontSize: 13, fontWeight: 600, marginBottom: 2 }}>No pickup slots available</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>Try a different date, or contact support.</p>
+                    </div>
+                  )
                   : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {slots.map((w) => (
-                        <label key={w.windowId} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
-                          <input type="radio" name="slot" value={w.windowId} checked={windowId === w.windowId} onChange={() => setWindowId(w.windowId)} />
-                          <span style={{ fontSize: 14 }}>{w.label} · {w.start}–{w.end}</span>
+                        <label key={w.windowId} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+                          padding: '12px 14px', borderRadius: 12,
+                          border: `1px solid ${windowId === w.windowId ? 'var(--gold)' : 'var(--glass-border)'}`,
+                          background: windowId === w.windowId ? 'rgba(212,175,55,0.1)' : 'rgba(255,255,255,0.03)',
+                          transition: 'all 0.15s',
+                        }}>
+                          <input type="radio" name="slot" value={w.windowId} checked={windowId === w.windowId} onChange={() => setWindowId(w.windowId)} style={{ accentColor: 'var(--gold)' }} />
+                          <div>
+                            <span style={{ fontSize: 14, fontWeight: 600, color: windowId === w.windowId ? 'var(--gold)' : 'var(--text-primary)' }}>{w.label}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 8 }}>{w.start}–{w.end}</span>
+                          </div>
                         </label>
                       ))}
                     </div>
@@ -175,10 +209,14 @@ export default function CheckoutPage() {
             )}
             <div style={{ display: 'flex', gap: 8 }}>
               <button style={secondaryBtn} onClick={() => { setError(null); setStep('address'); }}>Back</button>
-              <button style={primaryBtn} onClick={() => {
-                if (!pickupDate || !windowId) { setError('Please select a date and time slot.'); return; }
-                setError(null); setStep('payment');
-              }}>Continue</button>
+              <button
+                style={{ ...primaryBtn, opacity: (!pickupDate || !windowId) ? 0.5 : 1, cursor: (!pickupDate || !windowId) ? 'not-allowed' : 'pointer' }}
+                disabled={!pickupDate || !windowId}
+                onClick={() => {
+                  if (!pickupDate || !windowId) { setError('Please select a date and time slot.'); return; }
+                  setError(null); setStep('payment');
+                }}
+              >Continue</button>
             </div>
           </Card>
         )}
