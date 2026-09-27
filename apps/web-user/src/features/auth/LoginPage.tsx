@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, GlassCard } from '@ddc/ui';
-import { api, ApiError } from '../../lib/api.js';
+import { api, ApiError, setAccessToken } from '../../lib/api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 import { initGoogleSignIn } from '../../lib/google-auth.js';
 import type { Role } from '@ddc/shared';
@@ -34,7 +34,8 @@ export default function LoginPage() {
       try {
         const res = await api.post('/api/v1/auth/google', { idToken: response.credential }) as GoogleAuthResponse;
         const { accessToken } = res.data;
-        // Fetch user role from /me since /google response may not include it
+        // Set token before /me so the request carries Authorization header
+        setAccessToken(accessToken);
         const meRes = await api.get('/api/v1/users/me') as { data: { user: { _id: string; role: Role; storeId?: string } } };
         const u = meRes.data.user;
         setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);

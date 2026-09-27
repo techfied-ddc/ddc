@@ -31,6 +31,7 @@ declare global {
 }
 
 let scriptPromise: Promise<void> | null = null;
+let initialized = false;
 
 function loadGisScript(): Promise<void> {
   if (scriptPromise) return scriptPromise;
@@ -53,12 +54,15 @@ export async function initGoogleSignIn(
   buttonContainer: HTMLElement,
 ): Promise<void> {
   await loadGisScript();
-  window.google!.accounts.id.initialize({
-    client_id: clientId,
-    callback,
-    auto_select: false,
-    cancel_on_tap_outside: true,
-  });
+  if (!initialized) {
+    window.google!.accounts.id.initialize({
+      client_id: clientId,
+      callback,
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+    initialized = true;
+  }
   window.google!.accounts.id.renderButton(buttonContainer, {
     theme: 'filled_black',
     size: 'large',
