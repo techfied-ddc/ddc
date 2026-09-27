@@ -1,5 +1,5 @@
-FROM node:20-alpine AS base
-RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
+FROM node:20-slim AS base
+RUN npm install -g pnpm@9.15.4
 
 # ── Install phase ──────────────────────────────────────────────────────────────
 FROM base AS builder
@@ -39,7 +39,7 @@ RUN pnpm --filter @ddc/api build
 RUN pnpm --filter @ddc/api deploy --prod /deploy
 
 # ── Runtime ────────────────────────────────────────────────────────────────────
-FROM base AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -53,7 +53,8 @@ COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/packages/shared/dist ./node_modules/@ddc/shared/dist
 
 EXPOSE 4000
+# Use node itself for the healthcheck — wget/curl not present in node:20-slim
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
-  CMD wget -qO- http://localhost:4000/healthz || exit 1
+  CMD node -e "require('http').get('http://localhost:4000/healthz',(r)=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
 
 CMD ["node", "dist/index.js"]
