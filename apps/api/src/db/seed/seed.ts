@@ -5,6 +5,9 @@
  * Safe to re-run: uses upsert patterns.
  */
 import 'dotenv/config';
+// On Windows, Node's c-ares sometimes fails SRV DNS — use public DNS as fallback.
+import { setServers } from 'dns';
+setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { config } from '../../lib/config.js';

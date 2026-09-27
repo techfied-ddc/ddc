@@ -3,15 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard, Button, useLiquidGlass } from '@ddc/ui';
 import { Role } from '@ddc/shared';
-import { api, ApiError } from '../../lib/api.js';
+import { api, ApiError, setAccessToken } from '../../lib/api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 
-interface LoginResponse {
-  data: {
-    accessToken: string;
-    user: { _id: string; name: string; email: string; role: Role };
-  };
-}
+interface LoginResponse { data: { accessToken: string; userId: string } }
+interface MeResponse { data: { user: { _id: string; name: string; email: string; role: Role } } }
 
 export default function LoginPage() {
   const setAuth   = useAuthStore((s) => s.setAuth);
@@ -30,7 +26,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post('/api/v1/auth/email/login', { email, password }) as LoginResponse;
-      const { accessToken, user: u } = res.data;
+      const { accessToken } = res.data;
+
+      // Set token before /me so the request carries the Authorization header
+      setAccessToken(accessToken);
+      const meRes = await api.get('/api/v1/users/me') as MeResponse;
+      const u = meRes.data.user;
 
       if (u.role !== Role.ADMIN && u.role !== Role.SUPER_ADMIN) {
         setError('Access denied. Admin credentials required.');

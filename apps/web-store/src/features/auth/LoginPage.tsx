@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GlassCard, Button, OtpInput, useLiquidGlass } from '@ddc/ui';
 import { Role } from '@ddc/shared';
-import { api, ApiError } from '../../lib/api.js';
+import { api, ApiError, setAccessToken } from '../../lib/api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 
 const OTP_RESEND_SECONDS = 30;
 
 type Step = 'email' | 'otp';
-interface VerifyResponse { data: { accessToken: string; user: { _id: string; role: Role; storeId?: string } } }
+interface VerifyResponse { data: { accessToken: string; userId: string; isNew: boolean } }
+interface MeResponse { data: { user: { _id: string; role: Role; storeId?: string } } }
 
 export default function LoginPage() {
   const setAuth  = useAuthStore((s) => s.setAuth);
@@ -57,7 +58,12 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const res = await api.post('/api/v1/auth/otp/verify', { email: email.trim(), otp: value }) as VerifyResponse;
-      const { accessToken, user: u } = res.data;
+      const { accessToken } = res.data;
+
+      // Set token before /me so the request carries the Authorization header
+      setAccessToken(accessToken);
+      const meRes = await api.get('/api/v1/users/me') as MeResponse;
+      const u = meRes.data.user;
 
       // Guard: only store/rider roles can access this app
       if (u.role !== Role.STORE_OWNER && u.role !== Role.STORE_STAFF && u.role !== Role.RIDER) {

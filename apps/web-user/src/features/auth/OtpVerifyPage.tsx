@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, OtpInput, GlassCard } from '@ddc/ui';
-import { api, ApiError } from '../../lib/api.js';
+import { api, ApiError, setAccessToken } from '../../lib/api.js';
 import { useAuthStore } from '../../stores/auth.store.js';
 import type { Role } from '@ddc/shared';
 
 const OTP_RESEND_SECONDS = 30;
 
 interface LocationState { email?: string }
-interface VerifyResponse { data: { accessToken: string; user: { _id: string; role: Role; storeId?: string } } }
+interface VerifyResponse { data: { accessToken: string; userId: string; isNew: boolean } }
+interface MeResponse { data: { user: { _id: string; role: Role; storeId?: string } } }
 
 export default function OtpVerifyPage() {
   const navigate  = useNavigate();
@@ -49,7 +50,10 @@ export default function OtpVerifyPage() {
     setLoading(true);
     try {
       const res = await api.post('/api/v1/auth/otp/verify', { email, otp: value }) as VerifyResponse;
-      const { accessToken, user: u } = res.data;
+      const { accessToken } = res.data;
+      setAccessToken(accessToken);
+      const meRes = await api.get('/api/v1/users/me') as MeResponse;
+      const u = meRes.data.user;
       setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
       navigate('/', { replace: true });
     } catch (err) {
