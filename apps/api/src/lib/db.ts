@@ -12,7 +12,7 @@ export const connectDb = async (): Promise<void> => {
   mongoose.connection.on('error',        (err) => logger.error({ err }, 'MongoDB error'));
 
   await mongoose.connect(config.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 15_000,
     socketTimeoutMS: 45_000,
   });
 
