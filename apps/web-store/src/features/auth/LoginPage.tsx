@@ -8,20 +8,25 @@ import { useAuthStore } from '../../stores/auth.store.js';
 
 const OTP_RESEND_SECONDS = 30;
 
-type Step = 'email' | 'otp';
+type LoginMode = 'otp' | 'password';
+type OtpStep   = 'email' | 'otp';
 interface VerifyResponse { data: { accessToken: string; userId: string; isNew: boolean } }
-interface MeResponse { data: { user: { _id: string; role: Role; storeId?: string } } }
+interface MeResponse     { data: { user: { _id: string; role: Role; storeId?: string } } }
+
+const STORE_ROLES = [Role.STORE_OWNER, Role.STORE_STAFF, Role.RIDER, Role.ADMIN, Role.SUPER_ADMIN];
 
 export default function LoginPage() {
   const setAuth  = useAuthStore((s) => s.setAuth);
   const navigate = useNavigate();
   const canvasRef = useLiquidGlass({ intensity: 0.05 });
 
-  const [step, setStep]       = useState<Step>('email');
-  const [email, setEmail]     = useState('');
-  const [otp, setOtp]         = useState('');
-  const [error, setError]     = useState('');
-  const [loading, setLoading] = useState(false);
+  const [mode, setMode]           = useState<LoginMode>('otp');
+  const [step, setStep]           = useState<OtpStep>('email');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [otp, setOtp]             = useState('');
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
   const [countdown, setCountdown] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>(null!);
 
@@ -36,6 +41,26 @@ export default function LoginPage() {
   };
 
   useEffect(() => () => clearInterval(timerRef.current), []);
+
+  // ── Complete login: get /me, check role, navigate ────────────────────────────
+
+  const finishLogin = async (accessToken: string) => {
+    setAccessToken(accessToken);
+    const meRes = await api.get('/api/v1/users/me') as MeResponse;
+    const u     = meRes.data.user;
+
+    if (!STORE_ROLES.includes(u.role)) {
+      setError('This account does not have access to the Store Platform.');
+      setAccessToken(null);
+      setLoading(false);
+      return;
+    }
+
+    setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
+    navigate(u.role === Role.RIDER ? '/rider' : '/', { replace: true });
+  };
+
+  // ── OTP mode handlers ────────────────────────────────────────────────────────
 
   const handleSendOtp = async () => {
     if (!isValidEmail || loading) return;
@@ -52,32 +77,32 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerify = async (value: string) => {
+  const handleVerifyOtp = async (value: string) => {
     if (value.length !== 6 || loading) return;
     setError('');
     setLoading(true);
     try {
       const res = await api.post('/api/v1/auth/otp/verify', { email: email.trim(), otp: value }) as VerifyResponse;
-      const { accessToken } = res.data;
-
-      // Set token before /me so the request carries the Authorization header
-      setAccessToken(accessToken);
-      const meRes = await api.get('/api/v1/users/me') as MeResponse;
-      const u = meRes.data.user;
-
-      // Guard: store/rider roles and admins (who get a store picker on the dashboard)
-      const storeAllowed = [Role.STORE_OWNER, Role.STORE_STAFF, Role.RIDER, Role.ADMIN, Role.SUPER_ADMIN];
-      if (!storeAllowed.includes(u.role)) {
-        setError('This app is for store staff, riders, and administrators only.');
-        setLoading(false);
-        return;
-      }
-
-      setAuth({ id: u._id, role: u.role, storeId: u.storeId ?? null }, accessToken);
-      navigate(u.role === Role.RIDER ? '/rider' : '/', { replace: true });
+      await finishLogin(res.data.accessToken);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Verification failed. Please try again.');
       setOtp('');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Password mode handler ────────────────────────────────────────────────────
+
+  const handlePasswordLogin = async () => {
+    if (!isValidEmail || !password || loading) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await api.post('/api/v1/auth/email/login', { email: email.trim(), password }) as VerifyResponse;
+      await finishLogin(res.data.accessToken);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Incorrect email or password.');
     } finally {
       setLoading(false);
     }
@@ -98,29 +123,47 @@ export default function LoginPage() {
           <h1 className="font-display text-3xl font-light text-[var(--text-primary)]">Store Platform</h1>
         </motion.div>
 
+        {/* Mode toggle */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+          <div className="flex rounded-xl overflow-hidden border border-[var(--border)]">
+            {(['otp', 'password'] as LoginMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => { setMode(m); setError(''); setStep('email'); setOtp(''); setPassword(''); }}
+                className="flex-1 py-2.5 text-sm font-medium transition-colors"
+                style={{
+                  background: mode === m ? 'rgba(212,175,55,0.15)' : 'transparent',
+                  color:      mode === m ? 'var(--gold)' : 'var(--text-muted)',
+                  borderRight: m === 'otp' ? '1px solid var(--border)' : 'none',
+                }}
+              >
+                {m === 'otp' ? 'Email OTP' : 'Password'}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.1 }}>
           <GlassCard className="p-6 space-y-6">
             <AnimatePresence mode="wait">
-              {step === 'email' ? (
-                <motion.div key="email" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+
+              {/* ── OTP flow ── */}
+              {mode === 'otp' && step === 'email' && (
+                <motion.div key="otp-email" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <div>
-                    <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in</h2>
+                    <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in with OTP</h2>
                     <p className="text-sm text-[var(--text-muted)] mt-1">For store owners, staff, and riders.</p>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">
-                      Email address
-                    </label>
+                    <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Email address</label>
                     <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
                       <input
-                        type="email"
-                        value={email}
+                        type="email" value={email}
                         onChange={(e) => { setEmail(e.target.value); setError(''); }}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendOtp()}
                         placeholder="you@example.com"
                         className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
-                        autoFocus
-                        autoComplete="email"
+                        autoFocus autoComplete="email"
                       />
                     </div>
                   </div>
@@ -129,8 +172,10 @@ export default function LoginPage() {
                     Send OTP
                   </Button>
                 </motion.div>
-              ) : (
-                <motion.div key="otp" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+              )}
+
+              {mode === 'otp' && step === 'otp' && (
+                <motion.div key="otp-code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
                   <div>
                     <button onClick={() => { setStep('email'); setOtp(''); setError(''); }} className="text-xs text-[var(--gold)] mb-3 block hover:opacity-80">
                       ← Change email
@@ -140,9 +185,9 @@ export default function LoginPage() {
                       Sent to <span className="font-mono text-[var(--text-primary)]">{email}</span>
                     </p>
                   </div>
-                  <OtpInput length={6} value={otp} onChange={(v) => { setOtp(v); setError(''); }} onComplete={handleVerify} disabled={loading} />
+                  <OtpInput length={6} value={otp} onChange={(v) => { setOtp(v); setError(''); }} onComplete={handleVerifyOtp} disabled={loading} />
                   {error && <p className="text-sm text-[var(--danger)] text-center">{error}</p>}
-                  <Button className="w-full" size="lg" loading={loading} disabled={otp.length !== 6} onClick={() => handleVerify(otp)}>
+                  <Button className="w-full" size="lg" loading={loading} disabled={otp.length !== 6} onClick={() => handleVerifyOtp(otp)}>
                     Verify
                   </Button>
                   <p className="text-center text-sm text-[var(--text-muted)]">
@@ -156,6 +201,49 @@ export default function LoginPage() {
                   </p>
                 </motion.div>
               )}
+
+              {/* ── Password flow ── */}
+              {mode === 'password' && (
+                <motion.div key="password" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                  <div>
+                    <h2 className="font-display text-xl font-semibold text-[var(--text-primary)]">Sign in</h2>
+                    <p className="text-sm text-[var(--text-muted)] mt-1">Use your email and password.</p>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Email</label>
+                      <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
+                        <input
+                          type="email" value={email}
+                          onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                          onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+                          placeholder="you@example.com"
+                          className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
+                          autoFocus autoComplete="email"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wide block mb-2">Password</label>
+                      <div className="flex items-center bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl px-4 h-14 focus-within:border-[var(--gold)] transition-colors">
+                        <input
+                          type="password" value={password}
+                          onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                          onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+                          placeholder="••••••••"
+                          className="flex-1 bg-transparent text-[var(--text-primary)] text-base placeholder:text-[var(--text-subtle)] outline-none"
+                          autoComplete="current-password"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
+                  <Button className="w-full" size="lg" loading={loading} disabled={!isValidEmail || !password} onClick={handlePasswordLogin}>
+                    Sign In
+                  </Button>
+                </motion.div>
+              )}
+
             </AnimatePresence>
           </GlassCard>
         </motion.div>

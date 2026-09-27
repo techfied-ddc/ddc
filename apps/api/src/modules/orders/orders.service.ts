@@ -1,6 +1,7 @@
 import argon2 from 'argon2';
 import { Order } from './order.model.js';
 import { Service } from '../catalog/service.model.js';
+import { Category } from '../catalog/category.model.js';
 import { Coupon } from '../coupons/coupon.model.js';
 import { AppError } from '../../lib/errors.js';
 import { enqueue, QueueName } from '../../jobs/queue.js';
@@ -48,6 +49,11 @@ export async function calculateEstimate(
   const services = await Service.find({ _id: { $in: serviceIds } }).lean();
   const svcMap = new Map(services.map((s) => [s._id.toString(), s]));
 
+  // Bulk-fetch categories for categoryName snapshot
+  const categoryIds = [...new Set(services.map((s) => s.categoryId.toString()))];
+  const categories  = await Category.find({ _id: { $in: categoryIds } }).lean();
+  const catMap      = new Map(categories.map((c) => [c._id.toString(), c]));
+
   let estimatePaise = 0;
   const lineItems: unknown[] = [];
 
@@ -56,14 +62,15 @@ export async function calculateEstimate(
     if (!svc) throw AppError.notFound('Service', item.serviceId);
     if (!svc.enabled) throw new AppError(400, 'SERVICE_UNAVAILABLE', `"${svc.name}" is not available.`);
 
-    const unitPrice = svc.basePrice;
-    const subtotal  = unitPrice * item.quantity;
-    estimatePaise  += subtotal;
+    const unitPrice    = svc.basePrice;
+    const subtotal     = unitPrice * item.quantity;
+    estimatePaise     += subtotal;
+    const categoryName = catMap.get(svc.categoryId.toString())?.name ?? '';
 
     lineItems.push({
       serviceId:    svc._id,
       serviceName:  svc.name,
-      categoryName: '',          // filled by caller with category lookup
+      categoryName,
       unit:         svc.unit,
       quantity:     item.quantity,
       unitPrice,
