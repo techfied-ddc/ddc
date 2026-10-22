@@ -304,6 +304,7 @@ export async function transitionOrder({
       break;
     case OrderStatus.PICKUP_ASSIGNED:
       if (_rawPickupOtp) {
+        emitToUser(uid, 'otp:assigned', { orderId: order._id.toString(), type: 'pickup', otp: _rawPickupOtp });
         notifyPickupAssigned(uid, oref, _rawPickupOtp).catch(() => undefined);
       }
       if (order.pickupRiderId) {
@@ -318,6 +319,7 @@ export async function transitionOrder({
       break;
     case OrderStatus.DELIVERY_ASSIGNED:
       if (_rawDeliveryOtp) {
+        emitToUser(uid, 'otp:assigned', { orderId: order._id.toString(), type: 'delivery', otp: _rawDeliveryOtp });
         notifyDeliveryAssigned(uid, oref, _rawDeliveryOtp).catch(() => undefined);
       }
       if (order.deliveryRiderId) {

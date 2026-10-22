@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   const placeOrder = usePlaceOrder();
   const validateCoupon = useValidateCoupon();
 
-  const [address, setAddress]     = useState<Address>({ line1: '', line2: '', city: '', state: 'Uttar Pradesh', pincode: cart.items[0] ? '' : '', country: 'IN' });
+  const [address, setAddress]     = useState<Address>({ line1: '', line2: '', city: '', state: 'Uttar Pradesh', pincode: '', country: 'IN' });
   const [pickupDate, setPickupDate] = useState('');
   const [slots, setSlots]         = useState<SlotWindow[]>([]);
   const [windowId, setWindowId]   = useState('');

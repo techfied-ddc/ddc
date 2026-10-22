@@ -2,22 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { GlassCard, Reveal } from '@ddc/ui';
 import { useOrderDetail } from '../../lib/api.hooks.js';
-
-// Shows pickup or delivery OTP based on order status.
-// The OTPs are 4-digit codes stored as Zod integers on the order,
-// but they are NOT returned in the API — they're generated at order
-// placement and only the hashes are stored. The customer sees them
-// in the order detail response because they're in the order JSON
-// (pickupOtp / deliveryOtp fields — raw, not hashed).
-//
-// Actually: the raw OTPs are never stored, only hashes.
-// The customer never sees raw OTPs server-side; the OTPs are shown
-// in the confirmation step during checkout and nowhere else.
-// This page shows a placeholder directing the customer to re-check
-// their order confirmation / SMS.
-//
-// TODO (Phase 4): send OTPs via SMS/push notification at assignment time
-// and display them in a dedicated "Your OTP" notification screen.
+import { useOtpStore } from '../../stores/otp.store.js';
 
 export default function OtpDisplayPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +11,8 @@ export default function OtpDisplayPage() {
   const order = data;
 
   const isDelivery = order && ['DELIVERY_ASSIGNED', 'OUT_FOR_DELIVERY'].includes(order.status);
+  const otpType    = isDelivery ? 'delivery' : 'pickup';
+  const otp        = useOtpStore((s) => id ? s.otps[`${id}:${otpType}`] : undefined);
 
   if (isLoading) {
     return (
@@ -57,28 +44,31 @@ export default function OtpDisplayPage() {
             </p>
           </div>
 
-          {/* OTP display area */}
           <div className="bg-[var(--bg-raised)] rounded-2xl p-6 border border-[var(--gold)]/30">
             <p className="text-xs text-[var(--text-muted)] mb-3 uppercase tracking-widest">
-              {isDelivery ? 'Delivery OTP' : 'Pickup OTP'}
+              Your {isDelivery ? 'Delivery' : 'Pickup'} OTP
             </p>
-            <p className="text-sm text-[var(--text-subtle)]">
-              Your OTP was sent to your registered phone number via SMS.
-              Please check your messages.
-            </p>
-            <p className="font-mono text-xs text-[var(--gold)] mt-2">
-              Order: {order.orderRef}
+            {otp ? (
+              <p className="font-mono text-5xl tracking-[0.3em] text-[var(--gold)] font-bold">
+                {otp}
+              </p>
+            ) : (
+              <p className="text-sm text-[var(--text-subtle)]">
+                Your OTP has been sent to your registered phone number via SMS.
+                Keep this page open — it will appear here automatically once the rider is assigned.
+              </p>
+            )}
+            <p className="font-mono text-xs text-[var(--text-muted)] mt-3">
+              {order.orderRef}
             </p>
           </div>
 
-          <div className="space-y-3">
-            <button
-              onClick={() => navigate(`/orders/${id}`)}
-              className="w-full py-3 rounded-xl border border-[var(--border)] text-[var(--text-muted)] text-sm"
-            >
-              ← Back to Order
-            </button>
-          </div>
+          <button
+            onClick={() => navigate(`/orders/${id}`)}
+            className="w-full py-3 rounded-xl border border-[var(--border)] text-[var(--text-muted)] text-sm"
+          >
+            ← Back to Order
+          </button>
         </GlassCard>
       </Reveal>
     </div>

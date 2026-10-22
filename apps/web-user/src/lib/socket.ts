@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import type { QueryClient } from '@tanstack/react-query';
+import { useOtpStore } from '../stores/otp.store.js';
 
 const API_URL = (import.meta.env['VITE_API_URL'] as string | undefined) ?? 'http://localhost:4000';
 
@@ -36,6 +37,12 @@ export function connectSocket(userId: string, queryClient: QueryClient): void {
     if (payload?.orderRef) {
       // Can't resolve orderId from orderRef here — invalidate all invoices
       queryClient.invalidateQueries({ queryKey: ['invoice'] });
+    }
+  });
+
+  _socket.on('otp:assigned', (payload: { orderId: string; type: 'pickup' | 'delivery'; otp: string }) => {
+    if (payload?.orderId && payload?.type && payload?.otp) {
+      useOtpStore.getState().setOtp(payload.orderId, payload.type, payload.otp);
     }
   });
 }

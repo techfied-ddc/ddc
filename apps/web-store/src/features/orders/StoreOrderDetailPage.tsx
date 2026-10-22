@@ -211,6 +211,7 @@ export default function StoreOrderDetailPage() {
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [photos, setPhotos]         = useState<string[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError,    setPhotoError]     = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [transactionRef, setTransactionRef] = useState('');
   const [confirmMsg, setConfirmMsg]         = useState('');
@@ -471,10 +472,11 @@ export default function StoreOrderDetailPage() {
                       if (!file) return;
                       setPhotoUploading(true);
                       try {
+                        setPhotoError('');
                         const url = await uploadToCloudinary(file, 'garment');
                         setPhotos(p => [...p, url]);
                       } catch {
-                        // TODO: show toast
+                        setPhotoError('Photo upload failed. Please try again.');
                       } finally {
                         setPhotoUploading(false);
                         e.target.value = '';
@@ -483,6 +485,9 @@ export default function StoreOrderDetailPage() {
                   />
                 </div>
               </div>
+              {photoError && (
+                <p className="text-xs text-[var(--danger)] text-center">{photoError}</p>
+              )}
               <button
                 onClick={() => receive.mutate(photos.length > 0 ? { photos } : {})}
                 disabled={receive.isPending || photoUploading}

@@ -40,7 +40,10 @@ export const useAuthStore = create<AuthState>()(
         try {
           const res = await api.get('/api/v1/users/me') as { data: { user: { _id: string; role: Role; storeId?: string } } };
           const u = res.data.user;
-          set({ user: { id: u._id, role: u.role, storeId: u.storeId ?? null } });
+          // For admin accounts storeId is not set in the DB; preserve any store they
+          // already selected via AdminStorePicker so the choice survives a page refresh.
+          const existingStoreId = get().user?.storeId ?? null;
+          set({ user: { id: u._id, role: u.role, storeId: u.storeId ?? existingStoreId } });
         } catch {
           get().clearAuth();
         }

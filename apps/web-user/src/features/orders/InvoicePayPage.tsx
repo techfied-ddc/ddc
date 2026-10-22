@@ -62,14 +62,17 @@ export default function InvoicePayPage() {
 
     try {
       const payData = await initiatePayment.mutateAsync({ orderId: id! });
-      const { gatewayOrderId, amountPaise, keyId, invoiceRef, orderRef } = payData as {
-        gatewayOrderId: string;
-        amountPaise: number;
-        currency: string;
-        keyId: string;
-        invoiceRef: string;
-        orderRef: string;
-      };
+      const { gatewayOrderId, amountPaise, keyId, invoiceRef, orderRef } = (payData as {
+        ok: boolean;
+        data: {
+          gatewayOrderId: string;
+          amountPaise: number;
+          currency: string;
+          keyId: string;
+          invoiceRef: string;
+          orderRef: string;
+        };
+      }).data;
 
       if (keyId.startsWith('upi://')) {
         // UPI deep-link flow — open GPay / PhonePe / Paytm on the device
