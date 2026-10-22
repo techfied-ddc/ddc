@@ -17,6 +17,7 @@ const AdminLayout  = lazy(() => import('./features/layout/AdminLayout.js'));
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage.js'));
 const StoresPage   = lazy(() => import('./features/stores/StoresPage.js'));
 const OrdersPage   = lazy(() => import('./features/orders/OrdersPage.js'));
+const AdminOrderDetailPage = lazy(() => import('./features/orders/AdminOrderDetailPage.js'));
 const UsersPage    = lazy(() => import('./features/users/UsersPage.js'));
 const CatalogPage  = lazy(() => import('./features/catalog/CatalogPage.js'));
 const CouponsPage  = lazy(() => import('./features/coupons/CouponsPage.js'));
@@ -39,6 +40,7 @@ const router = createBrowserRouter([
       { path: '/',          element: w(<DashboardPage />) },
       { path: '/stores',    element: w(<StoresPage />) },
       { path: '/orders',    element: w(<OrdersPage />) },
+      { path: '/orders/:id', element: w(<AdminOrderDetailPage />) },
       { path: '/users',     element: w(<UsersPage />) },
       { path: '/catalog',   element: w(<CatalogPage />) },
       { path: '/coupons',   element: w(<CouponsPage />) },

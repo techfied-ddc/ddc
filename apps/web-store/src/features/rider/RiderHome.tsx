@@ -144,7 +144,7 @@ function DeliveryJobCard({ order }: { order: OrderDoc }) {
           disabled={collectCod.isPending}
           className="w-full py-2.5 rounded-xl border border-[var(--gold)] text-[var(--gold)] font-semibold text-sm disabled:opacity-50"
         >
-          {collectCod.isPending ? 'Marking…' : `Collect Cash · ₹${order.estimatePaise / 100}`}
+          {collectCod.isPending ? 'Marking…' : `Collect Cash · ₹${((order.invoiceTotalPaise ?? order.estimatePaise) / 100).toFixed(0)}`}
         </button>
       )}
 

@@ -232,16 +232,16 @@ export interface TicketDetail extends TicketSummary {
 }
 
 export const useMyTickets = () =>
-  useQuery({
+  useQuery<{ tickets: TicketSummary[] }>({
     queryKey: ['my-tickets'],
-    queryFn:  () => api.get('/api/v1/tickets'),
+    queryFn:  async () => api.get('/api/v1/tickets').then(r => (r as { data: { tickets: TicketSummary[] } }).data),
     staleTime: 30_000,
   });
 
 export const useTicketDetail = (id: string) =>
-  useQuery({
+  useQuery<{ ticket: TicketDetail }>({
     queryKey: ['ticket', id],
-    queryFn:  () => api.get(`/api/v1/tickets/${id}`),
+    queryFn:  async () => api.get(`/api/v1/tickets/${id}`).then(r => (r as { data: { ticket: TicketDetail } }).data),
     enabled:  !!id,
     staleTime: 15_000,
   });

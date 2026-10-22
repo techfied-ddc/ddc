@@ -221,6 +221,7 @@ export interface OrderDoc {
   paymentStatus: string;
   estimatePaise: number;
   discountPaise: number;
+  invoiceTotalPaise?: number;
   invoiceId?: string;
   userId: string;
   storeId?: string;

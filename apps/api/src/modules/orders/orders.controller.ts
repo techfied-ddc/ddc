@@ -1,9 +1,10 @@
 import type { Request, Response, NextFunction } from 'express';
 import { Order } from './order.model.js';
+import { Invoice } from '../invoicing/invoice.model.js';
 import { placeOrder, transitionOrder, verifyHandoverOtp } from './orders.service.js';
 import { markInvoicePaid } from '../invoicing/invoicing.service.js';
 import { AppError } from '../../lib/errors.js';
-import { DEFAULT_PAGE_SIZE, OrderStatus, PaymentMode, PaymentStatus, Role } from '@ddc/shared';
+import { DEFAULT_PAGE_SIZE, InvoiceStatus, OrderStatus, PaymentMode, PaymentStatus, Role } from '@ddc/shared';
 import type { OrderListQuery } from '@ddc/shared';
 
 // ── Customer: place order ─────────────────────────────────────────────────────
@@ -100,7 +101,15 @@ export const listAll = async (req: Request, res: Response, next: NextFunction) =
       Order.countDocuments(filter),
     ]);
 
-    res.json({ ok: true, data: { orders, total, page: p, limit: l, pages: Math.ceil(total / l) } });
+    const allOrderIds = orders.map(o => o._id);
+    const invs = allOrderIds.length
+      ? await Invoice.find({ orderId: { $in: allOrderIds }, status: { $in: [InvoiceStatus.ISSUED, InvoiceStatus.PAID] } })
+          .select('orderId totalPaise').lean()
+      : [];
+    const invMap = new Map(invs.map(inv => [inv.orderId.toString(), inv.totalPaise]));
+    const ordersWithInv = orders.map(o => ({ ...o, invoiceTotalPaise: invMap.get((o._id as { toString(): string }).toString()) }));
+
+    res.json({ ok: true, data: { orders: ordersWithInv, total, page: p, limit: l, pages: Math.ceil(total / l) } });
   } catch (err) { next(err); }
 };
 
@@ -280,7 +289,20 @@ export const getRiderJobs = async (req: Request, res: Response, next: NextFuncti
       .limit(past ? 50 : 20)
       .lean();
 
-    res.json({ ok: true, data: { orders } });
+    const deliveryOrderIds = orders
+      .filter(o => [OrderStatus.DELIVERY_ASSIGNED, OrderStatus.OUT_FOR_DELIVERY].includes(o.status as OrderStatus))
+      .map(o => o._id);
+    const invoices = deliveryOrderIds.length
+      ? await Invoice.find({ orderId: { $in: deliveryOrderIds }, status: { $in: [InvoiceStatus.ISSUED, InvoiceStatus.PAID] } })
+          .select('orderId totalPaise').lean()
+      : [];
+    const invoiceMap = new Map(invoices.map(inv => [inv.orderId.toString(), inv.totalPaise]));
+    const ordersOut = orders.map(o => ({
+      ...o,
+      invoiceTotalPaise: invoiceMap.get((o._id as { toString(): string }).toString()),
+    }));
+
+    res.json({ ok: true, data: { orders: ordersOut } });
   } catch (err) { next(err); }
 };
 

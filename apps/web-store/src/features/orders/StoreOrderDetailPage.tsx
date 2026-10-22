@@ -54,7 +54,7 @@ function IssueInvoicePanel({ orderId, initialLines, onDone }: {
   function submit() {
     mutation.mutate(
       { lines, taxPercent: tax, discountPaise, notes },
-      { onSuccess: () => { alert('Invoice issued!'); onDone(); } },
+      { onSuccess: () => { onDone(); } },
     );
   }
 

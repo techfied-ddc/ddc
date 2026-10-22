@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { GlassCard, Reveal } from '@ddc/ui';
 import {
   useAdminPayouts, useRunSettlement, useApprovePayout, useMarkPayoutPaid,
@@ -20,6 +20,12 @@ export default function PayoutsPage() {
     page,
   });
   const payouts = data?.payouts ?? [];
+  const { data: storesData } = useAdminStores();
+  const storeNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    storesData?.stores.forEach(s => { m[s._id] = s.name; });
+    return m;
+  }, [storesData]);
 
   const approvePayout  = useApprovePayout();
   const markPaid       = useMarkPayoutPaid();
@@ -79,7 +85,7 @@ export default function PayoutsPage() {
                 <tbody>
                   {payouts.map((payout) => (
                     <tr key={payout._id} className="border-b border-[var(--glass-border)]/50 hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-3 text-[var(--text-muted)] font-mono text-xs">{payout.storeId.slice(-8)}</td>
+                      <td className="px-4 py-3 text-[var(--text-muted)] text-xs">{storeNameMap[payout.storeId] ?? payout.storeId.slice(-8)}</td>
                       <td className="px-4 py-3 text-[var(--text-muted)] text-xs">{formatDate(payout.periodFrom)} – {formatDate(payout.periodTo)}</td>
                       <td className="px-4 py-3 font-mono tabular-nums text-[var(--text-secondary)]">{formatRupees(payout.totalInvoicedPaise)}</td>
                       <td className="px-4 py-3 font-mono tabular-nums text-[var(--gold)]">{formatRupees(payout.totalCommissionPaise)}</td>

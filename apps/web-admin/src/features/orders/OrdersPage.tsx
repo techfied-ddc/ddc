@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GlassCard, Reveal } from '@ddc/ui';
 import {
   useAdminOrders, useAdminAssignOrder, useAdminStores, useAdminRefund,
@@ -6,11 +7,17 @@ import {
 } from '../../lib/api.hooks.js';
 import { formatRupees, formatDate, statusColor } from '../../lib/format.js';
 
-const STATUS_TABS = ['ALL', 'ROUTING_FAILED', 'PLACED', 'ACCEPTED', 'IN_PROCESS', 'DELIVERED', 'CANCELLED'] as const;
+const STATUS_TABS = [
+  'ALL', 'ROUTING_FAILED', 'PLACED', 'ROUTED', 'ACCEPTED',
+  'PICKUP_ASSIGNED', 'PICKED_UP', 'AT_STORE', 'INVOICED',
+  'IN_PROCESS', 'READY', 'DELIVERY_ASSIGNED', 'OUT_FOR_DELIVERY',
+  'DELIVERED', 'COMPLETED', 'CANCELLED',
+] as const;
 type StatusTab = typeof STATUS_TABS[number];
 type PanelMode = 'assign' | 'refund';
 
 export default function OrdersPage() {
+  const navigate = useNavigate();
   const [tab,      setTab]      = useState<StatusTab>('ALL');
   const [page,     setPage]     = useState(1);
   const [selected, setSelected] = useState<AdminOrderDoc | null>(null);
@@ -75,11 +82,17 @@ export default function OrdersPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-[var(--text-muted)]">{order.paymentMode}</td>
-                      <td className="px-4 py-3 font-mono text-[var(--text-secondary)] tabular-nums">{formatRupees(order.estimatePaise - order.discountPaise)}</td>
+                      <td className="px-4 py-3 font-mono text-[var(--text-secondary)] tabular-nums">{formatRupees(order.invoiceTotalPaise ?? (order.estimatePaise - order.discountPaise))}</td>
                       <td className="px-4 py-3 text-[var(--text-muted)]">{order.storeId ? order.storeId.slice(-6) : <span className="text-[#EF4444] text-xs">Unassigned</span>}</td>
                       <td className="px-4 py-3 text-[var(--text-muted)]">{formatDate(order.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
+                          <button
+                            onClick={() => navigate(`/orders/${order._id}`)}
+                            className="text-[var(--text-muted)] text-xs hover:underline"
+                          >
+                            View
+                          </button>
                           {order.status === 'ROUTING_FAILED' && (
                             <button
                               onClick={() => { setSelected(order); setPanelMode('assign'); }}
@@ -140,7 +153,7 @@ function RefundPanel({ order, onClose }: { order: AdminOrderDoc; onClose: () => 
   const [error,  setError]  = useState<string | null>(null);
   const [done,   setDone]   = useState(false);
 
-  const fullAmount = order.estimatePaise - order.discountPaise;
+  const fullAmount = order.invoiceTotalPaise ?? (order.estimatePaise - order.discountPaise);
 
   const handleRefund = async () => {
     setError(null);

@@ -27,6 +27,16 @@ usersRouter.get('/',
   ctrl.listUsers,
 );
 
+usersRouter.post('/import',
+  authorize(Role.ADMIN, Role.SUPER_ADMIN),
+  ctrl.bulkImportUsers,
+);
+
+usersRouter.post('/message',
+  authorize(Role.ADMIN, Role.SUPER_ADMIN),
+  ctrl.sendMessageToUsers,
+);
+
 usersRouter.get('/:id',
   authorize(Role.ADMIN, Role.SUPER_ADMIN),
   ctrl.getUserById,

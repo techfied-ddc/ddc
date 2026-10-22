@@ -17,7 +17,7 @@ export default function StoreDashboard() {
   };
 
   const urgent = orders
-    .filter(o => ['ROUTED','AT_STORE'].includes(o.status))
+    .filter(o => ['ROUTED','ACCEPTED','AT_STORE'].includes(o.status))
     .slice(0, 5);
 
   return (
@@ -33,7 +33,7 @@ export default function StoreDashboard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <KpiTile label="Active Orders" value={isLoading ? '…' : String(kpis.total)} />
           <KpiTile label="Need Action"   value={isLoading ? '…' : String(kpis.routed + kpis.atStore)} />
-          <KpiTile label="In Process"    value={isLoading ? '…' : String(kpis.atStore)} />
+          <KpiTile label="At Store"      value={isLoading ? '…' : String(kpis.atStore)} />
           <KpiTile label="Ready"         value={isLoading ? '…' : String(kpis.ready)} />
         </div>
       </Reveal>

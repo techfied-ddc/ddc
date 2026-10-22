@@ -126,17 +126,19 @@ export function useUpdateStoreCommission(id: string) {
 // ── Orders ────────────────────────────────────────────────────────────────────
 
 export interface AdminOrderDoc {
-  _id:           string;
-  orderRef:      string;
-  status:        string;
-  paymentMode:   string;
-  paymentStatus: string;
-  estimatePaise: number;
-  discountPaise: number;
-  storeId?:      string;
-  userId:        string;
-  address:       { line1: string; city: string; state: string; pincode: string };
-  createdAt:     string;
+  _id:                string;
+  orderRef:           string;
+  status:             string;
+  paymentMode:        string;
+  paymentStatus:      string;
+  estimatePaise:      number;
+  discountPaise:      number;
+  invoiceTotalPaise?: number;
+  storeName?:         string;
+  storeId?:           string;
+  userId:             string;
+  address:            { line1: string; city: string; state: string; pincode: string };
+  createdAt:          string;
 }
 
 export function useAdminOrders(params: { status?: string; storeId?: string; page?: number } = {}) {
@@ -169,11 +171,32 @@ export function useAdminRefund() {
   });
 }
 
+export function useAdminOrderDetail(id: string) {
+  return useQuery({
+    queryKey: ['admin-order', id],
+    queryFn:  () => api.get(`/api/v1/orders/admin/${id}`).then(d<{ order: AdminOrderDoc & {
+      items: { serviceId: string; serviceName: string; unit: string; quantity: number; unitPrice: number }[];
+      statusHistory: { status: string; at: string; note?: string }[];
+      pickupSlot: { date: string; windowLabel?: string };
+    } }>),
+    enabled: !!id,
+  });
+}
+
+export function useAdminOrderInvoice(orderId: string) {
+  return useQuery({
+    queryKey: ['admin-invoice', orderId],
+    queryFn:  () => api.get(`/api/v1/invoices/order/${orderId}`).then(d<{ invoice: { invoiceRef: string; lines: { serviceName: string; quantity: number; lineTotal: number }[]; subtotalPaise: number; discountPaise: number; taxPercent: number; taxPaise: number; totalPaise: number; notes?: string } | null }>),
+    enabled:  !!orderId,
+  });
+}
+
 // ── Payouts ───────────────────────────────────────────────────────────────────
 
 export interface PayoutDoc {
   _id:                  string;
   storeId:              string;
+  storeName?:           string;
   periodFrom:           string;
   periodTo:             string;
   status:               string;
@@ -326,5 +349,21 @@ export function useAdminUpdateUser(userId: string) {
     mutationFn: (body: { name?: string; email?: string; phone?: string }) =>
       api.patch(`/api/v1/users/${userId}`, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-user', userId] }),
+  });
+}
+
+export function useBulkImportUsers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (users: Array<{ name?: string; email?: string; phone?: string; role?: string }>) =>
+      api.post('/api/v1/users/import', { users }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+}
+
+export function useSendMessageToUsers() {
+  return useMutation({
+    mutationFn: (body: { userIds: string[]; channel: 'EMAIL' | 'WHATSAPP'; subject?: string; message: string }) =>
+      api.post('/api/v1/users/message', body),
   });
 }
